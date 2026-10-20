@@ -2,6 +2,13 @@
 
 Black and white BMI, goal, daily exercise and Pakistani diet tracker. Data is stored on the device with shared_preferences.
 
+## Download and use
+
+- Web app: https://usamatech1.github.io/pureburn/
+- Android APK: https://github.com/usamatech1/pureburn/releases/latest/download/PureBurn.apk
+
+Both are rebuilt automatically every time code is pushed to `main`, so they always match the latest version.
+
 ## Run
 ```
 flutter create . --platforms=web,android,ios   # adds the platform folders once

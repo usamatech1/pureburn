@@ -41,43 +41,9 @@ jobs:
         run: |
           echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > android/app/release.jks
           if [ -f android/app/build.gradle.kts ]; then
-            cat >> android/app/build.gradle.kts <<'EOT'
-
-android {
-    signingConfigs {
-        create("release") {
-            storeFile = file("release.jks")
-            storePassword = System.getenv("ANDROID_KEYSTORE_PASSWORD")
-            keyAlias = System.getenv("ANDROID_KEY_ALIAS")
-            keyPassword = System.getenv("ANDROID_KEY_PASSWORD")
-        }
-    }
-    buildTypes {
-        getByName("release") {
-            signingConfig = signingConfigs.getByName("release")
-        }
-    }
-}
-EOT
+            cat .github/signing/signing.kts.txt >> android/app/build.gradle.kts
           else
-            cat >> android/app/build.gradle <<'EOT'
-
-android {
-    signingConfigs {
-        release {
-            storeFile file("release.jks")
-            storePassword System.getenv("ANDROID_KEYSTORE_PASSWORD")
-            keyAlias System.getenv("ANDROID_KEY_ALIAS")
-            keyPassword System.getenv("ANDROID_KEY_PASSWORD")
-        }
-    }
-    buildTypes {
-        release {
-            signingConfig signingConfigs.release
-        }
-    }
-}
-EOT
+            cat .github/signing/signing.groovy.txt >> android/app/build.gradle
           fi
 
       - name: Warn when no permanent key is set

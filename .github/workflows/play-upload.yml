@@ -1,0 +1,51 @@
+name: Upload to Google Play (manual)
+
+# Run this by hand from the Actions tab once you have a Play Console account,
+# the app created there, and the secret PLAY_SERVICE_ACCOUNT_JSON set.
+# It uploads the PureBurn.aab from the latest GitHub release.
+
+on:
+  workflow_dispatch:
+    inputs:
+      track:
+        description: Play track (internal, alpha, beta or production)
+        default: internal
+        required: true
+      status:
+        description: Release status (draft or completed)
+        default: draft
+        required: true
+      package_name:
+        description: App ID in Play Console
+        default: com.pureburn.pureburn
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  upload:
+    runs-on: ubuntu-latest
+    env:
+      PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+    steps:
+      - name: Check the secret is set
+        run: |
+          if [ -z "$PLAY_SERVICE_ACCOUNT_JSON" ]; then
+            echo "::error::Add the PLAY_SERVICE_ACCOUNT_JSON secret first (see PUBLISHING.md)."
+            exit 1
+          fi
+
+      - name: Download the latest AAB
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release download latest --repo "${{ github.repository }}" --pattern PureBurn.aab
+
+      - name: Upload to Google Play
+        uses: r0adkll/upload-google-play@v1
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          packageName: ${{ inputs.package_name }}
+          releaseFiles: PureBurn.aab
+          track: ${{ inputs.track }}
+          status: ${{ inputs.status }}

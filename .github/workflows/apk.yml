@@ -36,6 +36,11 @@ jobs:
       - name: Add Android platform files
         run: flutter create . --platforms=android --project-name pureburn --org com.pureburn
 
+      - name: Apply app name and icon
+        run: |
+          sed -i 's/android:label="[^"]*"/android:label="PureBurn"/' android/app/src/main/AndroidManifest.xml
+          cp -r platform_overrides/android/res/. android/app/src/main/res/
+
       - name: Set up permanent release signing
         if: env.ANDROID_KEYSTORE_BASE64 != ''
         run: |
@@ -56,26 +61,34 @@ jobs:
       - name: Get packages
         run: flutter pub get
 
+      # The build number goes up on every run, as Google Play requires for each upload.
       - name: Build release APK
-        run: flutter build apk --release
+        run: flutter build apk --release --build-number=${{ github.run_number }}
 
-      - name: Name the APK
-        run: cp build/app/outputs/flutter-apk/app-release.apk PureBurn.apk
+      - name: Build release App Bundle for Google Play
+        run: flutter build appbundle --release --build-number=${{ github.run_number }}
 
-      - name: Publish APK to the latest release
+      - name: Name the files
+        run: |
+          cp build/app/outputs/flutter-apk/app-release.apk PureBurn.apk
+          cp build/app/outputs/bundle/release/app-release.aab PureBurn.aab
+
+      - name: Publish APK and AAB to the latest release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           SHORT=$(echo "${{ github.sha }}" | cut -c1-7)
           gh release delete latest --yes --cleanup-tag || true
-          gh release create latest PureBurn.apk \
-            --title "PureBurn APK (latest)" \
-            --notes "Built automatically from commit $SHORT on $(date -u +'%Y-%m-%d %H:%M') UTC. Download PureBurn.apk and install it on your Android phone." \
+          gh release create latest PureBurn.apk PureBurn.aab \
+            --title "PureBurn (latest)" \
+            --notes "Built automatically from commit $SHORT on $(date -u +'%Y-%m-%d %H:%M') UTC, build number ${{ github.run_number }}. PureBurn.apk is for installing on an Android phone. PureBurn.aab is the file for Google Play." \
             --target "${{ github.sha }}" \
             --latest
 
-      - name: Also keep the APK as a build artifact
+      - name: Also keep the files as a build artifact
         uses: actions/upload-artifact@v4
         with:
-          name: PureBurn-apk
-          path: PureBurn.apk
+          name: PureBurn-android
+          path: |
+            PureBurn.apk
+            PureBurn.aab

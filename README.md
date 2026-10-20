@@ -7,7 +7,10 @@ Black and white BMI, goal, daily exercise and Pakistani diet tracker. Data is st
 - Web app: https://usamatech1.github.io/pureburn/
 - Android APK: https://github.com/usamatech1/pureburn/releases/latest/download/PureBurn.apk
 
-Both are rebuilt automatically every time code is pushed to `main`, so they always match the latest version.
+- Google Play bundle (.aab): https://github.com/usamatech1/pureburn/releases/latest/download/PureBurn.aab
+- Privacy policy: https://usamatech1.github.io/pureburn/privacy.html
+
+All of these are rebuilt automatically every time code is pushed to `main`, so they always match the latest version. To publish on Google Play later, follow [PUBLISHING.md](PUBLISHING.md).
 
 ## Run
 ```

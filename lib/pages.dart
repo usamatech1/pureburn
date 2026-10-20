@@ -12,6 +12,7 @@ class ModuleView extends StatelessWidget {
   Widget build(BuildContext context) {
     final d = app.d;
     if (id == 'profile') return ProfilePage();
+    if (id == 'result' && d.ok) return const ResultPage();
     if (!d.ok) {
       return Box(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -383,8 +384,29 @@ class _ProfilePageState extends State<ProfilePage> {
         return Column(children: [step1, _gap(), step2]);
       }),
       _gap(),
+      SizedBox(
+        width: double.infinity,
+        child: FilledButton.icon(
+          onPressed: _submit,
+          icon: const Icon(Icons.check_circle_outline),
+          label: const Text('Submit and see my plan'),
+        ),
+      ),
+      _gap(12),
       const Muted('Your details are saved automatically on this device.'),
     ]);
+  }
+
+  void _submit() {
+    FocusScope.of(context).unfocus();
+    if (!app.d.ok) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Check your details: age 10 to 100, height 100 to 250 cm, weight 20 to 300 kg.'),
+      ));
+      return;
+    }
+    app.save();
+    app.go('result');
   }
 
   void _fromFt() {
@@ -882,6 +904,162 @@ class _ProgressPageState extends State<ProgressPage> {
             ),
         ]),
       ),
+    ]);
+  }
+}
+
+// ---------------- result (after Submit) ----------------
+class ResultPage extends StatelessWidget {
+  const ResultPage({super.key});
+
+  static const _actLbl = {
+    'sedentary': 'Mostly sitting',
+    'light': 'On my feet some of the day',
+    'moderate': 'On my feet most of the day',
+    'active': 'Very physical work',
+  };
+  static const _paceLbl = {'gentle': 'Gentle', 'steady': 'Steady', 'fast': 'Faster'};
+  static const _goalLbl = {'lose': 'Lose weight', 'maintain': 'Maintain weight', 'gain': 'Gain weight'};
+
+  String _height() {
+    final tin = app.p.heightCm / 2.54;
+    final f = (tin / 12).floor();
+    return '${tidy(app.p.heightCm)} cm (${f} ft ${tidy(tin - f * 12)} in)';
+  }
+
+  String _summary() {
+    final p = app.p, d = app.d;
+    final b = StringBuffer();
+    b.writeln('PUREBURN - MY PLAN');
+    b.writeln('');
+    b.writeln('DETAILS');
+    b.writeln('Sex: ${p.sex == 'm' ? 'Male' : 'Female'}');
+    b.writeln('Age: ${p.age} years');
+    b.writeln('Height: ${_height()}');
+    b.writeln('Weight: ${app.fmtW(p.weightKg)}');
+    b.writeln('Daily activity: ${_actLbl[p.act] ?? p.act}');
+    b.writeln('BMI: ${d.bmi.toStringAsFixed(1)} (${d.cat})');
+    b.writeln('Healthy range: ${tidy(app.toDisp(d.minKg))} to ${app.fmtW(d.maxKg)}');
+    b.writeln('Best weight: ${app.fmtW(d.target)}');
+    final pl = d.plan;
+    if (pl == null || d.g == null) {
+      b.writeln(d.blocked ?? '');
+      return b.toString();
+    }
+    b.writeln('');
+    b.writeln('GOAL');
+    b.writeln('Goal: ${pl.headV}');
+    b.writeln('Time: ${pl.timeTxt}');
+    b.writeln('Daily calories: ${pl.kcal} kcal');
+    b.writeln('Daily split: ${pl.pG}g protein, ${pl.cG}g carbs, ${pl.fG}g fat');
+    b.writeln('Workouts: ${d.g!.days} days a week, ${p.place == 'home' ? 'at home' : 'at a gym'}');
+    b.writeln('');
+    b.writeln('EXERCISE PLAN');
+    for (final r in pl.sched) {
+      b.writeln('${r.day}: ${r.name} (${r.min} min)');
+      for (final it in r.items) {
+        b.writeln('  - $it');
+      }
+    }
+    b.writeln('Other days are rest days.');
+    b.writeln('');
+    b.writeln('DIET PLAN (sample day)');
+    for (final m in d.diet!.meals) {
+      b.writeln('${m.time} - ${m.name}');
+      for (final it in m.items) {
+        b.writeln('  - $it');
+      }
+    }
+    b.writeln('Food cost: about ${rs(d.diet!.daily, 5)} a day');
+    b.writeln('');
+    b.writeln('PureBurn is a general guide only. Please talk to a doctor before making health decisions.');
+    return b.toString();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final d = app.d, p = app.p;
+    final hero = Box(
+      dark: true,
+      padding: const EdgeInsets.all(24),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        const Eyebrow('Your plan is ready', onDark: true),
+        const SizedBox(height: 10),
+        Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
+          Text(d.bmi.toStringAsFixed(1), style: const TextStyle(fontSize: 64, fontWeight: FontWeight.w200, height: 0.95, letterSpacing: -2)),
+          const SizedBox(width: 14),
+          Expanded(child: Padding(
+            padding: const EdgeInsets.only(bottom: 6),
+            child: Text(d.cat.toUpperCase(), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, letterSpacing: 1.2)),
+          )),
+        ]),
+        const SizedBox(height: 12),
+        Text(
+          d.plan != null ? 'Goal: ${d.plan!.headV}. ${d.plan!.timeTxt}, ${d.plan!.kcal} kcal a day.' : (d.blocked ?? d.text),
+          style: const TextStyle(color: Color(0xFFA6A6A6), height: 1.4),
+        ),
+      ]),
+    );
+
+    final details = Box(
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        const H2('Your details'),
+        const SizedBox(height: 6),
+        _trow('Sex', p.sex == 'm' ? 'Male' : 'Female'),
+        _trow('Age', '${p.age} years'),
+        _trow('Height', _height()),
+        _trow('Current weight', app.fmtW(p.weightKg)),
+        _trow('Daily activity', _actLbl[p.act] ?? p.act),
+        _trow('BMI standard', p.std == 'asia' ? 'South Asian' : 'WHO general'),
+        const Divider(),
+        _trow('Goal', _goalLbl[d.goal] ?? d.goal, bold: true),
+        if (d.goal != 'maintain') _trow('Target weight', app.fmtW(d.tKg)),
+        if (d.goal != 'maintain') _trow('Pace', _paceLbl[p.pace] ?? p.pace),
+        _trow('Workout days', '${p.days} a week'),
+        _trow('Where you exercise', p.place == 'home' ? 'At home' : 'At a gym'),
+        const Divider(),
+        _trow('Best weight', app.fmtW(d.target)),
+        _trow('Healthy range', '${tidy(app.toDisp(d.minKg))} to ${app.fmtW(d.maxKg)}'),
+      ]),
+    );
+
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      hero,
+      _gap(),
+      details,
+      _gap(),
+      if (d.plan != null) ...[_glance(d), _gap()],
+      Wrap(spacing: 10, runSpacing: 10, children: [
+        FilledButton.icon(
+          onPressed: () async {
+            await Clipboard.setData(ClipboardData(text: _summary()));
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Summary copied. You can paste it in WhatsApp or notes.')));
+            }
+          },
+          icon: const Icon(Icons.copy_all_outlined),
+          label: const Text('Copy summary to share'),
+        ),
+        OutlinedButton.icon(
+          onPressed: () => app.go('profile'),
+          icon: const Icon(Icons.edit_outlined),
+          label: const Text('Edit details'),
+        ),
+      ]),
+      if (d.blocked != null) ...[_gap(), _blocked(d)] else ...[
+        _gap(28),
+        const Eyebrow('Part 1'),
+        const SizedBox(height: 6),
+        const H1('Exercise plan'),
+        _gap(),
+        const ExPlanPage(),
+        _gap(28),
+        const Eyebrow('Part 2'),
+        const SizedBox(height: 6),
+        const H1('Diet plan'),
+        _gap(),
+        const DietPlanPage(),
+      ],
     ]);
   }
 }

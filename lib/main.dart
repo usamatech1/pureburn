@@ -71,6 +71,7 @@ class ModDef {
 const mods = [
   ModDef('dashboard', 'Dashboard', 'Overview', Icons.dashboard_outlined, 'Overview'),
   ModDef('profile', 'Profile and goal', 'Setup', Icons.person_outline, 'Setup'),
+  ModDef('result', 'Your plan', 'Result', Icons.assignment_turned_in_outlined),
   ModDef('bmi', 'BMI and weight', 'Your body', Icons.speed_outlined),
   ModDef('dex', 'Daily exercise', 'Today', Icons.fitness_center, 'Today'),
   ModDef('ddiet', 'Daily diet', 'Today', Icons.restaurant_outlined),
@@ -135,6 +136,7 @@ class Shell extends StatelessWidget {
     final wide = MediaQuery.of(context).size.width >= 900;
     final m = mods.firstWhere((x) => x.id == app.mod);
     final body = SingleChildScrollView(
+      key: ValueKey(app.mod),
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 60),
       child: Center(
         child: ConstrainedBox(

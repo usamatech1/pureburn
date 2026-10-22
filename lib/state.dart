@@ -81,6 +81,14 @@ class AppState extends ChangeNotifier {
     if (q != null && const ['dashboard', 'profile', 'result', 'bmi', 'dex', 'ddiet', 'explan', 'dietplan', 'progress', 'measure', 'report', 'settings', 'foods', 'shop', 'workout', 'sleep', 'health', 'coach', 'challenges', 'account'].contains(q)) {
       mod = q;
     }
+    final qp = Uri.base.queryParameters;
+    welcomed = _sp!.getBool('pureburn-welcomed') == true ||
+        _sp!.getString('pureburn-state-v1') != null ||
+        d.ok ||
+        cloud.signedIn ||
+        !cloudConfigured ||
+        qp.containsKey('mod') ||
+        qp.containsKey('nolock');
     if (backFromGoogle) mod = 'account';
     unlocked = !(set['lock'] == true && (set['pinHash'] as String).isNotEmpty) || Uri.base.queryParameters.containsKey('nolock');
     loaded = true;
@@ -88,6 +96,15 @@ class AppState extends ChangeNotifier {
   }
 
   bool loaded = false;
+  // First run: sign in (or skip), then goals, then the dashboard.
+  bool welcomed = true;
+
+  void finishWelcome() {
+    welcomed = true;
+    _sp?.setBool('pureburn-welcomed', true);
+    mod = d.ok ? 'dashboard' : 'profile';
+    notifyListeners();
+  }
 
   static const prefKeys = ['dietType', 'allergies', 'ramadan', 'sehri', 'iftar', 'level', 'restSec', 'sleepGoal', 'health', 'healthOk', 'hread'];
 

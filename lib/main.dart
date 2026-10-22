@@ -4,6 +4,7 @@ import 'state.dart';
 import 'ui.dart';
 import 'pages.dart';
 import 'services.dart';
+import 'cloud_pages.dart' show WelcomePage;
 
 final app = AppState();
 
@@ -152,6 +153,7 @@ class Shell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (!app.welcomed) return const LockGate(child: WelcomePage());
     final wide = MediaQuery.of(context).size.width >= 900;
     final m = mods.firstWhere((x) => x.id == app.mod);
     final body = SingleChildScrollView(

@@ -616,3 +616,62 @@ class _CoachPageState extends State<CoachPage> {
     ]);
   }
 }
+
+// First screen on a new install: sign in or skip, then the app asks for goals.
+class WelcomePage extends StatefulWidget {
+  const WelcomePage({super.key});
+  @override
+  State<WelcomePage> createState() => _WelcomePageState();
+}
+
+class _WelcomePageState extends State<WelcomePage> {
+  @override
+  void initState() {
+    super.initState();
+    cloud.addListener(_r);
+  }
+
+  void _r() {
+    if (mounted) setState(() {});
+  }
+
+  @override
+  void dispose() {
+    cloud.removeListener(_r);
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final inn = cloud.signedIn;
+    return Scaffold(
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(20, 24, 20, 40),
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 520),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                const BrandLockup(height: 30),
+                _gap(22),
+                const H1('Welcome'),
+                _gap(6),
+                const Muted('Sign in to keep your data safe and use it on all your phones. Next you will set your goals.'),
+                _gap(18),
+                const AccountPage(),
+                _gap(14),
+                SizedBox(
+                  width: double.infinity,
+                  child: inn
+                      ? FilledButton(onPressed: app.finishWelcome, child: const Text('Continue'))
+                      : OutlinedButton(onPressed: app.finishWelcome, child: const Text('Skip for now')),
+                ),
+                if (!inn) ...[_gap(8), const Muted('You can sign in later from Account and sync.', size: 12.5)],
+              ]),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}

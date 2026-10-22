@@ -55,15 +55,18 @@ jobs:
         run: |
           (cd build/web && python3 -m http.server 8080 > /tmp/server.log 2>&1 &)
           sleep 3
+          mkdir -p shots
           cd preview
-          BASE_URL=http://localhost:8080/ OUT_DIR=../shots node shoot.mjs
+          BASE_URL=http://localhost:8080/ OUT_DIR=../shots node shoot.mjs 2>&1 | tee ../shots/run-log.txt
+          test -s ../shots/01-dashboard.png
 
       - name: Publish screenshots to the preview release
+        if: always()
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh release delete preview --yes --cleanup-tag || true
-          gh release create preview shots/*.png \
+          gh release create preview shots/* \
             --title "App screenshots" \
             --notes "Phone-size screenshots made from commit ${{ github.sha }} with sample data." \
             --prerelease \

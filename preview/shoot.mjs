@@ -52,7 +52,7 @@ const screens = [
   ['09-progress', 'progress'],
 ];
 
-const browser = await chromium.launch();
+const browser = await chromium.launch({ args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--no-sandbox'] });
 async function shoot(name, mod, dark) {
   const ctx = await browser.newContext({
     viewport: { width: 390, height: 1500 },
@@ -66,14 +66,18 @@ async function shoot(name, mod, dark) {
   }, stored);
   const page = await ctx.newPage();
   page.on('pageerror', (e) => console.log('pageerror', name, e.message));
+  page.on('console', (m) => { if (m.type() === 'error') console.log('console.error', name, m.text().slice(0, 300)); });
+  page.on('requestfailed', (r) => console.log('requestfailed', name, r.url().slice(0, 150), r.failure()?.errorText));
   await page.goto(`${BASE}?mod=${mod}`, { waitUntil: 'load' });
-  await page.waitForSelector('flt-glass-pane', { timeout: 60000 });
-  await page.waitForTimeout(5000);
+  await page.waitForSelector('flt-glass-pane', { timeout: 60000, state: 'attached' });
+  await page.waitForTimeout(6000);
   await page.screenshot({ path: `${OUT}/${name}.png` });
   console.log('saved', name);
   await ctx.close();
 }
 
-for (const [name, mod] of screens) await shoot(name, mod, false);
-await shoot('10-dashboard-dark', 'dashboard', true);
+for (const [name, mod] of screens) {
+  try { await shoot(name, mod, false); } catch (e) { console.log('FAILED', name, String(e).slice(0, 400)); }
+}
+try { await shoot('10-dashboard-dark', 'dashboard', true); } catch (e) { console.log('FAILED dark', String(e).slice(0, 400)); }
 await browser.close();

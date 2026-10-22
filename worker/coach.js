@@ -2,7 +2,7 @@
 // Secrets and settings (Cloudflare dashboard > your Worker > Settings):
 //   GEMINI_API_KEY  (secret)  key from https://aistudio.google.com/apikey
 //   FB_API_KEY      (text)    the same Firebase web apiKey the app uses (public)
-//   GEMINI_MODEL    (text, optional) default gemini-3.1-flash-lite
+//   GEMINI_MODEL    (text, optional) default gemini-3.5-flash-lite
 //   KV namespace binding named LIMITS (for daily limits)
 const USER_LIMIT = 8;     // questions per person per day
 const GLOBAL_LIMIT = 400; // the free Gemini key allows about 500 requests a day in total
@@ -55,7 +55,7 @@ export default {
       if (!(await bump(env, `u:${uid}:${day}`, USER_LIMIT))) return json({ error: `You reached today's limit of ${USER_LIMIT} coach questions. Come back tomorrow.` }, 429);
       if (!(await bump(env, `g:${day}`, GLOBAL_LIMIT))) return json({ error: 'The free coach reached its shared daily limit. Please try again tomorrow.' }, 429);
 
-      const model = env.GEMINI_MODEL || 'gemini-3.1-flash-lite';
+      const model = env.GEMINI_MODEL || 'gemini-3.5-flash-lite';
       const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-goog-api-key': env.GEMINI_API_KEY },
@@ -66,7 +66,7 @@ export default {
         }),
       });
       const j = await r.json();
-      if (!r.ok) return json({ error: 'The coach is busy. Try again.' }, 502);
+      if (!r.ok) return json({ error: 'The coach is busy. Try again.', detail: String((j.error && j.error.message) || r.status).slice(0, 200) }, 502);
       const reply = ((((j.candidates || [])[0] || {}).content || {}).parts || []).map((p) => p.text || '').join('\n').trim();
       return json({ reply });
     } catch (e) {

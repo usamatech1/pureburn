@@ -186,7 +186,7 @@ void applyPrefs(Derived d, Map<String, dynamic> set, Map<String, String> swaps, 
     diet.goalTips = [...ramadanTips, ...diet.goalTips];
   }
   for (final m in meals) {
-    final share = plan.kcal > 0 ? m.kcal / plan.kcal : 0;
+    final share = plan.kcal > 0 ? m.kcal / plan.kcal : 0.0;
     m.mp = plan.pG * share;
     m.mc = plan.cG * share;
     m.mf = plan.fG * share;

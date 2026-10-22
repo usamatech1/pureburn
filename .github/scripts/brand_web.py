@@ -1,4 +1,4 @@
-"""Adds SEO tags and a branded animated loader (with a skeleton) to web/index.html.
+"""Adds SEO tags and a branded animated loader to web/index.html.
 The loader disappears when Flutter draws its first frame."""
 p = "web/index.html"
 s = open(p, encoding="utf-8").read()
@@ -50,13 +50,12 @@ if "pb-seo" not in s:
 if "pb-splash" not in s:
     splash = (
         '<style>'
-        '#pb-splash{position:fixed;inset:0;z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;'
+        '#pb-splash{position:fixed;inset:0;z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;'
         'padding:0 20px;box-sizing:border-box;background:radial-gradient(120% 60% at 90% 0%,rgba(242,138,85,.22),transparent 60%),#050505;'
         'color:#fff;transition:opacity .45s ease;font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif}'
         '@media (prefers-color-scheme: light){#pb-splash{background:radial-gradient(120% 60% at 90% 0%,rgba(201,83,31,.20),transparent 60%),#fff5ec;color:#111}'
-        '#pb-splash .sk{background:linear-gradient(90deg,#eadfd4 25%,#f6eee6 37%,#eadfd4 63%);background-size:400% 100%}'
         '#pb-splash small,#pb-splash .msg{color:#7a6a5d}#pb-splash .bar{background:#ead9c9}}'
-        '#pb-splash .brand{margin-top:16vh;display:flex;flex-direction:column;align-items:center}'
+        '#pb-splash .brand{margin-top:-6vh;display:flex;flex-direction:column;align-items:center}'
         '#pb-splash svg{width:76px;height:76px;animation:pbpulse 1.6s ease-in-out infinite;filter:drop-shadow(0 0 18px rgba(242,138,85,.45))}'
         '#pb-splash p{font:300 20px/1 -apple-system,Segoe UI,Roboto,Arial,sans-serif;letter-spacing:6px;margin:20px 0 0}'
         '#pb-splash small{display:block;color:#8d8d8d;font:400 9px/1 -apple-system,Segoe UI,Roboto,Arial,sans-serif;letter-spacing:3px;margin-top:12px}'
@@ -64,13 +63,9 @@ if "pb-splash" not in s:
         '#pb-splash .bar{position:relative;width:180px;height:3px;border-radius:3px;background:#262626;overflow:hidden;margin-top:26px}'
         '#pb-splash .bar i{position:absolute;inset:0 auto 0 0;width:40%;border-radius:3px;background:#f28a55;animation:pbslide 1.2s ease-in-out infinite}'
         '#pb-splash .msg{margin-top:12px;font-size:12px;color:#8d8d8d;min-height:14px}'
-        '#pb-splash .skel{width:100%;max-width:420px;margin-top:34px;display:grid;grid-template-columns:1fr 1fr;gap:12px;opacity:.9}'
-        '#pb-splash .sk{border-radius:20px;height:84px;background:linear-gradient(90deg,#161616 25%,#222 37%,#161616 63%);background-size:400% 100%;animation:pbshimmer 1.6s ease infinite}'
-        '#pb-splash .sk.w{grid-column:1/3;height:110px}'
         '@keyframes pbpulse{50%{transform:scale(1.08);opacity:.88}}'
         '@keyframes pbslide{0%{left:-40%}100%{left:100%}}'
-        '@keyframes pbshimmer{0%{background-position:100% 50%}100%{background-position:0 50%}}'
-        '@media (prefers-reduced-motion:reduce){#pb-splash svg,#pb-splash .bar i,#pb-splash .sk{animation:none}}'
+        '@media (prefers-reduced-motion:reduce){#pb-splash svg,#pb-splash .bar i{animation:none}}'
         '</style>'
         '<div id="pb-splash" role="status" aria-live="polite"><div class="brand">'
         '<svg viewBox="0 0 100 100" aria-hidden="true"><path fill="#f28a55" fill-rule="evenodd" '
@@ -78,7 +73,7 @@ if "pb-splash" not in s:
         'M50 84C38 84 35 72 42 62C45 58 48 56 50 50C56 58 66 66 64 74C63 80 57 84 50 84Z"/></svg>'
         '<p><b>PURE</b>BURN</p><small>BURN CLEAN. LIVE PURE.</small>'
         '<div class="bar"><i></i></div><div class="msg" id="pb-msg">Getting your plan ready...</div></div>'
-        '<div class="skel" aria-hidden="true"><div class="sk w"></div><div class="sk"></div><div class="sk"></div><div class="sk"></div><div class="sk"></div></div></div>'
+        '</div>'
         '<script>(function(){function hide(){var e=document.getElementById("pb-splash");if(!e)return;'
         'e.style.opacity="0";setTimeout(function(){if(e.parentNode)e.parentNode.removeChild(e)},480)}'
         'document.addEventListener("flutter-first-frame",hide);window.addEventListener("flutter-first-frame",hide);'

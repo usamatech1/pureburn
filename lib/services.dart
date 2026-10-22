@@ -556,49 +556,27 @@ class _ServiceSettingsState extends State<ServiceSettings> {
   }
 }
 
-/// Shown for a moment while saved data loads: brand mark plus pulsing placeholder cards.
-class _LoadingSkeleton extends StatefulWidget {
+/// Shown for a moment while saved data loads: brand mark with a slim progress bar.
+class _LoadingSkeleton extends StatelessWidget {
   const _LoadingSkeleton();
-  @override
-  State<_LoadingSkeleton> createState() => _LoadingSkeletonState();
-}
-
-class _LoadingSkeletonState extends State<_LoadingSkeleton> with SingleTickerProviderStateMixin {
-  late final AnimationController _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 1100))..repeat(reverse: true);
-
-  @override
-  void dispose() {
-    _c.dispose();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
-    Widget block(double h) => AnimatedBuilder(
-          animation: _c,
-          builder: (context, _) => Container(
-            height: h,
-            decoration: BoxDecoration(color: soft(context).withOpacity(0.55 + 0.45 * _c.value), borderRadius: BorderRadius.circular(20)),
-          ),
-        );
     return Ambient(
       child: Scaffold(
         backgroundColor: Colors.transparent,
-        body: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(20, 24, 20, 20),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              const BrandLockup(height: 26),
-              const SizedBox(height: 24),
-              block(120),
-              const SizedBox(height: 12),
-              Row(children: [Expanded(child: block(84)), const SizedBox(width: 12), Expanded(child: block(84))]),
-              const SizedBox(height: 12),
-              Row(children: [Expanded(child: block(84)), const SizedBox(width: 12), Expanded(child: block(84))]),
-              const SizedBox(height: 12),
-              block(150),
-            ]),
-          ),
+        body: Center(
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            const BrandLockup(height: 30),
+            const SizedBox(height: 22),
+            SizedBox(
+              width: 180,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(3),
+                child: LinearProgressIndicator(minHeight: 3, color: accent(context), backgroundColor: soft(context)),
+              ),
+            ),
+          ]),
         ),
       ),
     );

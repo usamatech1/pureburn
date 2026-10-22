@@ -183,7 +183,7 @@ class _WorkoutPageState extends State<WorkoutPage> {
   Widget _setRow(ExItem e, int n, String date, int i, List<SetLog> l) {
     final s = l[i];
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.only(top: 12, bottom: 4),
       child: Row(children: [
         SizedBox(width: 44, child: Text('Set ${i + 1}', style: TextStyle(color: muted(context), fontSize: 12.5))),
         SizedBox(
@@ -193,7 +193,7 @@ class _WorkoutPageState extends State<WorkoutPage> {
             initialValue: '${s.reps}',
             keyboardType: TextInputType.number,
             textAlign: TextAlign.center,
-            decoration: InputDecoration(isDense: true, labelText: e.hold ? 'sec' : 'reps'),
+            decoration: InputDecoration(isDense: true, labelText: e.hold ? 'sec' : 'reps', floatingLabelBehavior: FloatingLabelBehavior.always, contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12)),
             onChanged: (v) {
               s.reps = int.tryParse(v) ?? s.reps;
               app.persist();
@@ -208,7 +208,7 @@ class _WorkoutPageState extends State<WorkoutPage> {
             initialValue: s.kg == 0 ? '' : tidy(s.kg),
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
             textAlign: TextAlign.center,
-            decoration: const InputDecoration(isDense: true, labelText: 'kg'),
+            decoration: const InputDecoration(isDense: true, labelText: 'kg', floatingLabelBehavior: FloatingLabelBehavior.always, contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 12)),
             onChanged: (v) {
               s.kg = double.tryParse(v.replaceAll(',', '.')) ?? 0;
               app.persist();

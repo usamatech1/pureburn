@@ -33,6 +33,11 @@ class AppState extends ChangeNotifier {
       if (t == 'light') theme = ThemeMode.light;
     } catch (_) {}
     d = derive(p);
+    // Deep link for the web version, for example ?mod=progress opens the Progress section.
+    final q = Uri.base.queryParameters['mod'];
+    if (q != null && const ['dashboard', 'profile', 'result', 'bmi', 'dex', 'ddiet', 'explan', 'dietplan', 'progress'].contains(q)) {
+      mod = q;
+    }
     notifyListeners();
   }
 

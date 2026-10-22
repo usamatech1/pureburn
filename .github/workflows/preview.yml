@@ -1,0 +1,71 @@
+name: Screenshots of the app
+
+# Builds the web app, opens it in a phone-sized browser with sample data and
+# publishes a screenshot of every screen to the "preview" release.
+# Runs by hand, or when anything inside the preview folder changes.
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "preview/**"
+      - ".github/workflows/preview.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: preview
+  cancel-in-progress: true
+
+jobs:
+  shots:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Add web platform files and branding
+        run: |
+          flutter create . --platforms=web --project-name pureburn
+          cp -r platform_overrides/web/. web/
+
+      - name: Get packages
+        run: flutter pub get
+
+      - name: Build web
+        run: flutter build web --release
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install the browser
+        working-directory: preview
+        run: |
+          npm init -y > /dev/null
+          npm install playwright@1.49.1
+          npx playwright install --with-deps chromium
+
+      - name: Serve the app and take screenshots
+        run: |
+          (cd build/web && python3 -m http.server 8080 > /tmp/server.log 2>&1 &)
+          sleep 3
+          cd preview
+          BASE_URL=http://localhost:8080/ OUT_DIR=../shots node shoot.mjs
+
+      - name: Publish screenshots to the preview release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release delete preview --yes --cleanup-tag || true
+          gh release create preview shots/*.png \
+            --title "App screenshots" \
+            --notes "Phone-size screenshots made from commit ${{ github.sha }} with sample data." \
+            --prerelease \
+            --latest=false \
+            --target "${{ github.sha }}"

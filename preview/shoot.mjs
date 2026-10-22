@@ -104,6 +104,11 @@ try {
     await page.mouse.click(196, 291); await page.waitForTimeout(2500);
   });
 } catch (e) { console.log('FAILED ui', String(e).slice(0, 400)); }
+try {
+  await shoot('28-workout-sets-thursday', 'workout', false, 390, 2200, null, async (page) => {
+    await page.mouse.click(195, 181); await page.waitForTimeout(2500);
+  });
+} catch (e) { console.log('FAILED sets', String(e).slice(0, 400)); }
 try { await shoot('11-dashboard-desktop', 'dashboard', false, 1100, 800); } catch (e) { console.log('FAILED desktop', String(e).slice(0, 400)); }
 
 // A short screen recording so the animations can be seen.

@@ -116,6 +116,7 @@ class _HealthPageState extends State<HealthPage> {
       return;
     }
     final l = readings()..add({'t': 'sugar', 'd': app.selDate, 'v': v, 'c': ctx, 'at': DateTime.now().millisecondsSinceEpoch});
+    buzz(true);
     _store(l);
     sugar.clear();
     setState(() => lastSugar = sugarStatus(v, ctx));
@@ -130,6 +131,7 @@ class _HealthPageState extends State<HealthPage> {
       return;
     }
     final l = readings()..add({'t': 'bp', 'd': app.selDate, 's': s, 'di': d, if (p != null && p >= 30 && p <= 220) 'p': p, 'at': DateTime.now().millisecondsSinceEpoch});
+    buzz(true);
     _store(l);
     sys.clear();
     dia.clear();

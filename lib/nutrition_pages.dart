@@ -392,7 +392,14 @@ class DietPrefsBox extends StatelessWidget {
               const Muted('Plans your food as sehri, iftar and a dinner after taraweeh.', size: 12),
             ]),
           ),
-          Switch(value: ram, onChanged: (v) => app.setPref('ramadan', v)),
+          Switch(
+            value: ram,
+            onChanged: (v) {
+              buzz();
+              app.setPref('ramadan', v);
+              _snack(context, v ? 'Ramadan mode is on. Your meals are now sehri, iftar and a dinner after taraweeh.' : 'Ramadan mode is off. Your normal meals are back.');
+            },
+          ),
         ]),
         if (ram) ...[
           const SizedBox(height: 10),

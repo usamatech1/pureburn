@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -106,7 +107,7 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  static const prefKeys = ['dietType', 'allergies', 'ramadan', 'sehri', 'iftar', 'level', 'restSec', 'sleepGoal', 'health', 'healthOk', 'hread'];
+  static const prefKeys = ['dietType', 'allergies', 'ramadan', 'sehri', 'iftar', 'level', 'restSec', 'sleepGoal', 'health', 'healthOk', 'hread', 'haptics'];
 
   SharedPreferences? get prefs => _sp;
 
@@ -309,11 +310,23 @@ class AppState extends ChangeNotifier {
     wlog.removeWhere((k, _) => k.compareTo(cutoff) < 0);
     _rebuild();
     persist();
+    flushNow();
     notifyListeners();
   }
 
   /// Writes the data to the device without rebuilding the screens.
+  Timer? _pt;
+
+  /// Keystroke friendly: waits a moment and writes once. save() writes at once.
   void persist() {
+    _pt?.cancel();
+    _pt = Timer(const Duration(milliseconds: 350), flushNow);
+    cloud.markDirty();
+  }
+
+  void flushNow() {
+    _pt?.cancel();
+    _pt = null;
     final sp = _sp;
     if (sp != null) {
       sp.setString(
@@ -330,7 +343,6 @@ class AppState extends ChangeNotifier {
             'wlog': _wlogTo(),
           }));
     }
-    cloud.markDirty();
   }
 
   void go(String m) {

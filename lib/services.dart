@@ -239,6 +239,9 @@ class _LockGateState extends State<LockGate> with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState s) {
+    if (s == AppLifecycleState.paused || s == AppLifecycleState.inactive || s == AppLifecycleState.hidden) {
+      app.flushNow();
+    }
     if (s == AppLifecycleState.paused) {
       _away = DateTime.now();
     } else if (s == AppLifecycleState.resumed) {

@@ -93,6 +93,7 @@ class _WorkoutPageState extends State<WorkoutPage> {
     final l = app.setsFor(date, e.name, n, repsFor(e, _level), 0);
     final s = l[i];
     s.done = !s.done;
+    if (s.done) buzz();
     app.persist();
     final all = l.take(n).every((x) => x.done);
     app.tick('ex', e.id, all);
@@ -476,6 +477,7 @@ class _SleepPageState extends State<SleepPage> {
               final l = app.log(date);
               l.sleep = h;
               l.sleepQ = q;
+              buzz(true);
               app.save();
               setState(() {
                 hours = null;

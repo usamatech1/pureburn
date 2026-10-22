@@ -1,11 +1,61 @@
 import 'package:flutter/material.dart' hide Text;
+import 'package:flutter/services.dart';
 import 'i18n.dart';
+import 'main.dart' show app;
 
 Color fg(BuildContext c) => Theme.of(c).colorScheme.onSurface;
 Color muted(BuildContext c) => Theme.of(c).brightness == Brightness.dark ? const Color(0xFF8D8D8D) : const Color(0xFF6E6E6E);
 Color line(BuildContext c) => Theme.of(c).brightness == Brightness.dark ? const Color(0xFF2A2A2A) : const Color(0xFFE1E1E1);
 Color card(BuildContext c) => Theme.of(c).brightness == Brightness.dark ? const Color(0xFF0F0F0F) : Colors.white;
 Color soft(BuildContext c) => Theme.of(c).brightness == Brightness.dark ? const Color(0xFF181818) : const Color(0xFFEFEFEF);
+
+// Warm ember accent used sparingly on top of the black and white look.
+Color accent(BuildContext c) => Theme.of(c).brightness == Brightness.dark ? const Color(0xFFF0804A) : const Color(0xFFD9602A);
+
+/// A light tap on the phone for key actions. Can be turned off in Settings.
+void buzz([bool strong = false]) {
+  if (app.set['haptics'] == false) return;
+  if (strong) {
+    HapticFeedback.mediumImpact();
+  } else {
+    HapticFeedback.selectionClick();
+  }
+}
+
+/// Soft, calm backdrop: a faint warm glow at the top over a deep gradient.
+class Ambient extends StatelessWidget {
+  final Widget child;
+  const Ambient({super.key, required this.child});
+  @override
+  Widget build(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    return Stack(children: [
+      Positioned.fill(
+        child: RepaintBoundary(
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: dark ? const [Color(0xFF0E0C0B), Color(0xFF050505)] : const [Color(0xFFFAF6F2), Color(0xFFF2F2F2)],
+              ),
+            ),
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: RadialGradient(
+                  center: const Alignment(0.85, -1.05),
+                  radius: 1.1,
+                  colors: [accent(context).withOpacity(dark ? 0.10 : 0.09), Colors.transparent],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+      child,
+    ]);
+  }
+}
 
 class Box extends StatelessWidget {
   final Widget child;
@@ -18,9 +68,17 @@ class Box extends StatelessWidget {
       width: double.infinity,
       padding: padding,
       decoration: BoxDecoration(
-        color: dark ? const Color(0xFF0B0B0B) : card(context),
+        color: dark ? const Color(0xFF0B0B0B) : null,
+        gradient: dark
+            ? null
+            : (Theme.of(context).brightness == Brightness.dark
+                ? const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFF151413), Color(0xFF0E0E0E)])
+                : const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Colors.white, Color(0xFFFBF8F5)])),
         borderRadius: BorderRadius.circular(22),
         border: Border.all(color: dark ? const Color(0xFF2A2A2A) : line(context)),
+        boxShadow: Theme.of(context).brightness == Brightness.dark || dark
+            ? null
+            : const [BoxShadow(color: Color(0x0F000000), blurRadius: 18, offset: Offset(0, 6))],
       ),
       child: dark ? DefaultTextStyle.merge(style: const TextStyle(color: Colors.white), child: child) : child,
     );
@@ -92,7 +150,7 @@ class Bar extends StatelessWidget {
           tween: Tween<double>(begin: 0, end: (v.isNaN ? 0.0 : v).clamp(0.0, 1.0)),
           duration: const Duration(milliseconds: 900),
           curve: Curves.easeOutCubic,
-          builder: (context, val, _) => LinearProgressIndicator(value: val, minHeight: 6, backgroundColor: soft(context), color: fg(context)),
+          builder: (context, val, _) => LinearProgressIndicator(value: val, minHeight: 6, backgroundColor: soft(context), color: accent(context)),
         ),
       );
 }
@@ -264,7 +322,7 @@ class RingGauge extends StatelessWidget {
         width: size,
         height: size,
         child: CustomPaint(
-          painter: _RingPainter(v, ink ?? fg(context), track ?? soft(context), size * 0.11),
+          painter: _RingPainter(v, ink ?? accent(context), track ?? soft(context), size * 0.11),
           child: Center(child: Text(center, style: TextStyle(fontSize: (size * 0.2).clamp(12.0, 19.0), fontWeight: FontWeight.w600))),
         ),
       ),

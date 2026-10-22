@@ -32,6 +32,11 @@ ThemeData _theme(Brightness b) {
     useMaterial3: true,
     colorScheme: scheme,
     scaffoldBackgroundColor: scheme.surface,
+    switchTheme: SwitchThemeData(
+      thumbColor: WidgetStateProperty.resolveWith((s) => s.contains(WidgetState.selected) ? scheme.onPrimary : (dark ? const Color(0xFFB5B5B5) : const Color(0xFF6B6B6B))),
+      trackColor: WidgetStateProperty.resolveWith((s) => s.contains(WidgetState.selected) ? scheme.primary : (dark ? const Color(0xFF1E1E1E) : const Color(0xFFE2E2E2))),
+      trackOutlineColor: WidgetStateProperty.resolveWith((s) => s.contains(WidgetState.selected) ? scheme.primary : (dark ? const Color(0xFF8A8A8A) : const Color(0xFF7A7A7A))),
+    ),
     checkboxTheme: CheckboxThemeData(
       fillColor: WidgetStateProperty.resolveWith((s) => s.contains(WidgetState.selected) ? scheme.primary : Colors.transparent),
       checkColor: WidgetStateProperty.all(scheme.onPrimary),
@@ -49,6 +54,9 @@ ThemeData _theme(Brightness b) {
   );
 }
 
+final ThemeData _lightTheme = _theme(Brightness.light);
+final ThemeData _darkTheme = _theme(Brightness.dark);
+
 class PureBurnApp extends StatelessWidget {
   const PureBurnApp({super.key});
   @override
@@ -59,8 +67,8 @@ class PureBurnApp extends StatelessWidget {
         title: 'PureBurn',
         debugShowCheckedModeBanner: false,
         themeMode: app.theme,
-        theme: _theme(Brightness.light),
-        darkTheme: _theme(Brightness.dark),
+        theme: _lightTheme,
+        darkTheme: _darkTheme,
         builder: (context, child) => Directionality(
           textDirection: TextDirection.ltr,
           child: child ?? const SizedBox.shrink(),
@@ -134,6 +142,7 @@ class Shell extends StatelessWidget {
                 if (m.group != null)
                   Padding(padding: const EdgeInsets.fromLTRB(12, 14, 12, 6), child: Eyebrow(m.group!)),
                 _NavBtn(m: m, on: app.mod == m.id, onTap: () {
+                  buzz();
                   app.go(m.id);
                   if (drawer) Navigator.of(context).pop();
                 }),
@@ -158,6 +167,7 @@ class Shell extends StatelessWidget {
     final m = mods.firstWhere((x) => x.id == app.mod);
     final body = SingleChildScrollView(
       key: ValueKey(app.mod),
+      primary: false,
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 60),
       child: Center(
         child: ConstrainedBox(
@@ -174,14 +184,24 @@ class Shell extends StatelessWidget {
         ),
       ),
     );
+    final animated = AnimatedSwitcher(
+      duration: const Duration(milliseconds: 220),
+      switchInCurve: Curves.easeOutCubic,
+      transitionBuilder: (w, a) => FadeTransition(
+        opacity: a,
+        child: SlideTransition(position: Tween<Offset>(begin: const Offset(0, 0.015), end: Offset.zero).animate(a), child: w),
+      ),
+      child: body,
+    );
     if (wide) {
-      return LockGate(child: Scaffold(body: Row(children: [_side(context), Expanded(child: body)])));
+      return LockGate(child: Ambient(child: Scaffold(backgroundColor: Colors.transparent, body: Row(children: [_side(context), Expanded(child: animated)]))));
     }
-    return LockGate(child: Scaffold(
-      appBar: AppBar(title: app.mod == 'dashboard' ? const BrandLockup() : Text(m.title, style: const TextStyle(fontWeight: FontWeight.w700)), backgroundColor: Theme.of(context).scaffoldBackgroundColor, elevation: 0),
+    return LockGate(child: Ambient(child: Scaffold(
+      backgroundColor: Colors.transparent,
+      appBar: AppBar(title: app.mod == 'dashboard' ? const BrandLockup() : Text(m.title, style: const TextStyle(fontWeight: FontWeight.w700)), backgroundColor: Colors.transparent, elevation: 0, scrolledUnderElevation: 0),
       drawer: Builder(builder: (ctx) => Drawer(width: 268, child: _side(ctx, drawer: true))),
-      body: body,
-    ));
+      body: animated,
+    )));
   }
 }
 

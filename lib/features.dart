@@ -624,6 +624,19 @@ class _SettingsPageState extends State<SettingsPage> {
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       const ServiceSettings(),
       Box(
+        child: Row(children: [
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              const Text('Vibration feedback', style: TextStyle(fontWeight: FontWeight.w600)),
+              const SizedBox(height: 2),
+              const Muted('A light tap when you finish a set or save something.', size: 12),
+            ]),
+          ),
+          Switch(value: app.set['haptics'] != false, onChanged: (v) => app.setPref('haptics', v)),
+        ]),
+      ),
+      _g(16),
+      Box(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           const H2('Backup and restore'),
           const Muted('Your data lives only on this device. Save a backup so you do not lose it if you change phones or clear the app.'),

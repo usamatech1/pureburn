@@ -68,7 +68,7 @@ class _MeasurePageState extends State<MeasurePage> {
           child: TextField(
             controller: c,
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            decoration: InputDecoration(labelText: tr(label), suffixText: _u()),
+            decoration: InputDecoration(labelText: '${tr(label)} (${_u()})'),
           ),
         ),
       );
@@ -514,11 +514,9 @@ class _ReportPageState extends State<ReportPage> {
         child: DefaultTextStyle.merge(
           style: const TextStyle(color: Colors.white),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Row(children: [
-              const BrandLockup(color: Colors.white),
-              const Spacer(),
-              Text('${r.from}  →  ${r.to}', style: const TextStyle(fontSize: 11, letterSpacing: 1, color: Color(0xFFA6A6A6))),
-            ]),
+            const BrandLockup(color: Colors.white),
+            const SizedBox(height: 6),
+            Text('${r.from}  →  ${r.to}', style: const TextStyle(fontSize: 11, letterSpacing: 1, color: Color(0xFFA6A6A6))),
             const SizedBox(height: 22),
             Row(children: [
               RingGauge(fraction: r.score / 100, center: '${r.score}%', size: 104, ink: Colors.white, track: const Color(0xFF2A2A2A)),

@@ -1,5 +1,11 @@
 // Plan text from logic.dart, the newer screens, and the settings. English -> [Urdu, Roman Urdu].
 final Map<String, List<String>> wordsB = {
+  'Rs # / day': ['{1} روپے / دن', 'Rs {1} / din'],
+  'About Rs # a month': ['تقریباً {1} روپے ماہانہ', 'Taqriban Rs {1} mahana'],
+  'Rs # a month': ['{1} روپے ماہانہ', 'Rs {1} mahana'],
+  'tasks': ['کام', 'kaam'],
+  'task': ['کام', 'kaam'],
+  'Tasks': ['کام', 'Kaam'],
   // days
   'Monday': ['پیر', 'Peer'],
   'Tuesday': ['منگل', 'Mangal'],

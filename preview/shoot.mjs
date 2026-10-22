@@ -59,6 +59,9 @@ const screens = [
   ['20-shopping-list', 'shop'],
   ['22-workout-player', 'workout'],
   ['23-sleep', 'sleep'],
+  ['25-coach', 'coach'],
+  ['26-challenges', 'challenges'],
+  ['27-account', 'account'],
 ];
 
 const browser = await chromium.launch({ args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--no-sandbox'] });

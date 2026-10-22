@@ -36,6 +36,7 @@ const state = {
   p: { unit: 'metric', sex: 'm', age: 32, act: 'light', heightCm: 172, weightKg: 84.5, std: 'asia', goal: 'lose', targetKg: 74, pace: 'steady', days: 4, place: 'home', budget: 'std' },
   logs,
   weights,
+  meas: [0, 1, 2, 3].map((k) => ({ d: iso(addDays(today, -(3 - k) * 10)), waist: 98 - k * 1.8, chest: 104 - k * 0.6, hip: 106 - k * 0.8 })),
 };
 // shared_preferences on the web keeps strings as JSON inside localStorage with a "flutter." prefix.
 const stored = JSON.stringify(JSON.stringify(state));
@@ -50,10 +51,13 @@ const screens = [
   ['07-exercise-plan', 'explan'],
   ['08-diet-plan', 'dietplan'],
   ['09-progress', 'progress'],
+  ['12-measurements', 'measure'],
+  ['13-weekly-report', 'report'],
+  ['14-settings', 'settings'],
 ];
 
 const browser = await chromium.launch({ args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--no-sandbox'] });
-async function shoot(name, mod, dark, w = 390, h = 1500) {
+async function shoot(name, mod, dark, w = 390, h = 1500, lang = '') {
   const ctx = await browser.newContext({
     viewport: { width: w, height: h },
     deviceScaleFactor: w > 600 ? 1 : 2,
@@ -70,7 +74,7 @@ async function shoot(name, mod, dark, w = 390, h = 1500) {
   page.on('pageerror', (e) => console.log('pageerror', name, e.message));
   page.on('console', (m) => { if (m.type() === 'error') console.log('console.error', name, m.text().slice(0, 300)); });
   page.on('requestfailed', (r) => console.log('requestfailed', name, r.url().slice(0, 150), r.failure()?.errorText));
-  await page.goto(`${BASE}?mod=${mod}`, { waitUntil: 'domcontentloaded', timeout: 20000 });
+  await page.goto(`${BASE}?mod=${mod}${lang ? '&lang=' + lang : ''}`, { waitUntil: 'domcontentloaded', timeout: 20000 });
   await page.waitForSelector('flt-glass-pane', { timeout: 25000, state: 'attached' });
   await page.waitForTimeout(5000);
   console.log('rendered', name, await page.evaluate(() => document.querySelectorAll('flt-glass-pane, canvas').length));
@@ -80,10 +84,14 @@ async function shoot(name, mod, dark, w = 390, h = 1500) {
 }
 
 for (const [name, mod] of screens) {
-  try { await shoot(name, mod, false); } catch (e) { console.log('FAILED', name, String(e).slice(0, 400)); }
+  try { await shoot(name, mod, false, 390, mod === 'progress' ? 2600 : 1500); } catch (e) { console.log('FAILED', name, String(e).slice(0, 400)); }
 }
 try { await shoot('10-dashboard-dark', 'dashboard', true); } catch (e) { console.log('FAILED dark', String(e).slice(0, 400)); }
 try { await shoot('11-dashboard-desktop', 'dashboard', false, 1100, 800); } catch (e) { console.log('FAILED desktop', String(e).slice(0, 400)); }
+try { await shoot('15-dashboard-urdu', 'dashboard', false, 390, 1100, 'ur'); } catch (e) { console.log('FAILED urdu', String(e).slice(0, 400)); }
+try { await shoot('16-dashboard-roman-urdu', 'dashboard', false, 390, 1100, 'rur'); } catch (e) { console.log('FAILED rur', String(e).slice(0, 400)); }
+try { await shoot('17-diet-plan-urdu', 'dietplan', false, 390, 1800, 'ur'); } catch (e) { console.log('FAILED urdu diet', String(e).slice(0, 400)); }
+try { await shoot('18-progress-urdu', 'progress', false, 390, 2400, 'rur'); } catch (e) { console.log('FAILED rur progress', String(e).slice(0, 400)); }
 
 // A short screen recording so the animations can be seen.
 try {

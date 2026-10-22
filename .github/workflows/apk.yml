@@ -41,6 +41,9 @@ jobs:
           sed -i 's/android:label="[^"]*"/android:label="PureBurn"/' android/app/src/main/AndroidManifest.xml
           cp -r platform_overrides/android/res/. android/app/src/main/res/
 
+      - name: Prepare Android for reminders, steps and app lock
+        run: python3 .github/scripts/patch_android.py
+
       - name: Set up permanent release signing
         if: env.ANDROID_KEYSTORE_BASE64 != ''
         run: |

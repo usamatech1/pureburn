@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'logic.dart';
 import 'main.dart' show app;
 import 'features.dart';
+import 'services.dart';
 import 'ui.dart';
 
 class ModuleView extends StatelessWidget {
@@ -458,6 +459,7 @@ class _ProfilePageState extends State<ProfilePage> {
       return;
     }
     app.save();
+    Reminders.apply();
     app.go('result');
   }
 

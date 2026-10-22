@@ -64,6 +64,10 @@ class AppState extends ChangeNotifier {
 
   bool loaded = false;
 
+  SharedPreferences? get prefs => _sp;
+
+  void refresh() => notifyListeners();
+
   void setLang(String l) {
     lang = l;
     _sp?.setString('pureburn-lang', l);

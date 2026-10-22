@@ -53,7 +53,7 @@ jobs:
           npx playwright install --with-deps chromium
 
       - name: Serve the app and take screenshots
-        timeout-minutes: 6
+        timeout-minutes: 12
         run: |
           nohup python3 -m http.server 8080 --directory build/web > /tmp/server.log 2>&1 < /dev/null &
           sleep 3

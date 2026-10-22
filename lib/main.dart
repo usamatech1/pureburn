@@ -3,12 +3,16 @@ import 'i18n.dart';
 import 'state.dart';
 import 'ui.dart';
 import 'pages.dart';
+import 'services.dart';
 
 final app = AppState();
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  app.load();
+  app.load().then((_) async {
+    await Reminders.apply();
+    await StepService.start();
+  });
   runApp(const PureBurnApp());
 }
 
@@ -161,13 +165,13 @@ class Shell extends StatelessWidget {
       ),
     );
     if (wide) {
-      return Scaffold(body: Row(children: [_side(context), Expanded(child: body)]));
+      return LockGate(child: Scaffold(body: Row(children: [_side(context), Expanded(child: body)])));
     }
-    return Scaffold(
+    return LockGate(child: Scaffold(
       appBar: AppBar(title: app.mod == 'dashboard' ? const BrandLockup() : Text(m.title, style: const TextStyle(fontWeight: FontWeight.w700)), backgroundColor: Theme.of(context).scaffoldBackgroundColor, elevation: 0),
       drawer: Builder(builder: (ctx) => Drawer(width: 268, child: _side(ctx, drawer: true))),
       body: body,
-    );
+    ));
   }
 }
 

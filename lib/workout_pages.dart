@@ -29,6 +29,8 @@ class _WorkoutPageState extends State<WorkoutPage> {
   int rest = 0, restTotal = 0, holdLeft = 0, warm = 0, cardio = 0;
   String timerLabel = '';
   bool cardioOn = false;
+  SchedRow? _extra; // a session chosen on a rest day
+  String _extraDate = '';
   final open = <String>{};
   final timerKey = GlobalKey();
 
@@ -284,7 +286,7 @@ class _WorkoutPageState extends State<WorkoutPage> {
   Widget build(BuildContext context) {
     final d = app.d;
     final date = app.selDate;
-    final row = app.rowFor(date);
+    final row = app.rowFor(date) ?? (_extraDate == date ? _extra : null);
     final L = app.logs[date];
     final head = Box(
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -299,7 +301,30 @@ class _WorkoutPageState extends State<WorkoutPage> {
     if (row == null) {
       return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         const WeekStrip(),
-        Box(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [const H2('Rest day'), const Muted('No workout is planned for this day. Your muscles grow and recover on rest days. An easy walk is always welcome.')])),
+        Box(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            const H2('Rest day'),
+            const Muted('No workout is planned for this day. Your muscles grow and recover on rest days. An easy walk is always welcome.'),
+            if (d.plan != null && d.plan!.sched.isNotEmpty) ...[
+              _g(16),
+              const Muted('Feel like training anyway? Pick a session to start:', size: 12.5),
+              _g(8),
+              Wrap(spacing: 8, runSpacing: 8, children: [
+                for (final r in d.plan!.sched)
+                  OutlinedButton(
+                    onPressed: () {
+                      buzz();
+                      setState(() {
+                        _extra = r;
+                        _extraDate = date;
+                      });
+                    },
+                    child: Text('${r.name} (${r.day})'),
+                  ),
+              ]),
+            ],
+          ]),
+        ),
         _g(),
         head,
       ]);
@@ -330,6 +355,8 @@ class _WorkoutPageState extends State<WorkoutPage> {
     final cardioInfo = exInfoFor(st.notes.isNotEmpty ? st.notes.first : '');
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       const WeekStrip(),
+      if (app.rowFor(date) == null && _extra != null)
+        Align(alignment: Alignment.centerLeft, child: TextButton.icon(onPressed: () => setState(() => _extra = null), icon: const Icon(Icons.undo, size: 18), label: const Text('Back to rest day'))),
       _timerCard(),
       Box(
         dark: true,

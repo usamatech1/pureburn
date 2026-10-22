@@ -80,6 +80,7 @@ async function shoot(name, mod, dark, w = 390, h = 1500, settings = null) {
   await page.goto(`${BASE}?mod=${mod}`, { waitUntil: 'domcontentloaded', timeout: 20000 });
   await page.waitForSelector('flt-glass-pane', { timeout: 25000, state: 'attached' });
   await page.waitForTimeout(5000);
+  if (settings) console.log('ls', await page.evaluate(() => JSON.stringify(Object.fromEntries(Object.keys(localStorage).map((k) => [k, localStorage.getItem(k).slice(0, 120)])))));
   console.log('rendered', name, await page.evaluate(() => document.querySelectorAll('flt-glass-pane, canvas').length));
   await page.screenshot({ path: `${OUT}/${name}.png`, timeout: 20000 });
   console.log('saved', name);

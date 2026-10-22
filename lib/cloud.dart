@@ -11,7 +11,9 @@ const fbApiKey = String.fromEnvironment('FB_API_KEY');
 const fbProject = String.fromEnvironment('FB_PROJECT');
 const _fbRegionRaw = String.fromEnvironment('FB_REGION');
 String get fbRegion => _fbRegionRaw.isEmpty ? 'us-central1' : _fbRegionRaw;
-const googleClientId = String.fromEnvironment('GOOGLE_CLIENT_ID');
+// The Web client ID is a public identifier (it is visible in every Google sign-in page), so it is safe to keep here.
+const _gEnv = String.fromEnvironment('GOOGLE_CLIENT_ID');
+const googleClientId = _gEnv == '' ? '561795698433-up6bmkc03s6bbh4su8ph73rb1v7bnlnm.apps.googleusercontent.com' : _gEnv;
 bool get googleReady => cloudConfigured && googleClientId.isNotEmpty;
 bool get cloudConfigured => fbApiKey.isNotEmpty && fbProject.isNotEmpty;
 

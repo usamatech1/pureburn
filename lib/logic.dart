@@ -71,13 +71,17 @@ class DayLog {
   Set<String> meal = {};
   int water = 0;
   int steps = 0;
-  Map<String, dynamic> toJson() => {'ex': ex.toList(), 'meal': meal.toList(), 'water': water, 'steps': steps};
+  double sleep = 0; // hours slept the night before
+  int sleepQ = 0; // 1 to 5
+  Map<String, dynamic> toJson() => {'ex': ex.toList(), 'meal': meal.toList(), 'water': water, 'steps': steps, 'sleep': sleep, 'sleepQ': sleepQ};
   static DayLog fromJson(Map<String, dynamic> j) {
     final d = DayLog();
     d.ex = Set<String>.from((j['ex'] ?? []) as List);
     d.meal = Set<String>.from((j['meal'] ?? []) as List);
     d.water = (j['water'] ?? 0).toInt();
     d.steps = (j['steps'] ?? 0).toInt();
+    d.sleep = ((j['sleep'] ?? 0) as num).toDouble();
+    d.sleepQ = ((j['sleepQ'] ?? 0) as num).toInt();
     return d;
   }
 }

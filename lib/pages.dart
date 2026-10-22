@@ -5,6 +5,7 @@ import 'logic.dart';
 import 'main.dart' show app;
 import 'features.dart';
 import 'nutrition_pages.dart';
+import 'workout_pages.dart';
 import 'services.dart';
 import 'ui.dart';
 
@@ -40,6 +41,10 @@ class ModuleView extends StatelessWidget {
         return DietPlanPage();
       case 'progress':
         return ProgressPage();
+      case 'workout':
+        return const WorkoutPage();
+      case 'sleep':
+        return const SleepPage();
       case 'foods':
         return const FoodDiaryPage();
       case 'shop':
@@ -1354,6 +1359,8 @@ Widget _sectionCards(BuildContext context) {
     secCard(Icons.calendar_month_outlined, 'Exercise plan', '${d.g!.days} days a week, about ${(pl.weekly / 10).round() * 10} kcal burned a week', 'explan'),
     secCard(Icons.list_alt_outlined, 'Diet plan', '${pl.kcal} kcal a day, about ${rs(df.daily, 5)} of food a day', 'dietplan'),
     secCard(Icons.fitness_center, 'Daily exercise', row == null ? 'Rest day today' : 'Today: ${row.name}', 'dex'),
+    secCard(Icons.play_circle_outline, 'Workout player', row == null ? 'Rest day today' : 'Sets, reps and timers for ${row.name}', 'workout'),
+    secCard(Icons.bedtime_outlined, 'Sleep', (app.logs[app.selDate]?.sleep ?? 0) > 0 ? '${tidy(app.logs[app.selDate]!.sleep)} hours logged' : 'Log last night\'s sleep', 'sleep'),
     secCard(Icons.restaurant_outlined, 'Daily diet', '${info.kcal} of ${pl.kcal} kcal eaten today', 'ddiet'),
     secCard(Icons.show_chart, 'Progress', app.weights.isEmpty ? 'Log your weight to start your chart' : '${app.weights.length} weight entries · latest ${app.fmtW(app.weights.last.kg)}', 'progress'),
   ], min: 300);

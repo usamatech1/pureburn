@@ -29,6 +29,7 @@ class AppState extends ChangeNotifier {
   List<Food> customFoods = [];
   Map<String, String> swaps = {}; // meal id -> template id
   Set<String> shopDone = {};
+  Map<String, Map<String, List<SetLog>>> wlog = {}; // workout sets by date and exercise
   bool unlocked = false;
   String lockNote = '';
 
@@ -57,6 +58,7 @@ class AppState extends ChangeNotifier {
         customFoods = [for (final e in (j['cfoods'] ?? []) as List) Food.fromJson(e as Map<String, dynamic>)];
         swaps = {for (final e in ((j['swaps'] ?? {}) as Map<String, dynamic>).entries) e.key: '${e.value}'};
         shopDone = {for (final e in (j['shop'] ?? []) as List) '$e'};
+        wlog = _wlogFrom(j['wlog']);
       }
       final sraw = _sp!.getString('pureburn-settings');
       if (sraw != null) {
@@ -81,7 +83,7 @@ class AppState extends ChangeNotifier {
 
   bool loaded = false;
 
-  static const prefKeys = ['dietType', 'allergies', 'ramadan', 'sehri', 'iftar'];
+  static const prefKeys = ['dietType', 'allergies', 'ramadan', 'sehri', 'iftar', 'level', 'restSec', 'sleepGoal'];
 
   SharedPreferences? get prefs => _sp;
 
@@ -103,6 +105,53 @@ class AppState extends ChangeNotifier {
   void delMeasure(String date) {
     measures.removeWhere((x) => x.d == date);
     save();
+  }
+
+  // ---- workout log ----
+  Map<String, dynamic> _wlogTo() => wlog.map((d, m) => MapEntry(d, m.map((ex, l) => MapEntry(ex, l.map((s) => s.toJson()).toList()))));
+
+  Map<String, Map<String, List<SetLog>>> _wlogFrom(Object? raw) {
+    final out = <String, Map<String, List<SetLog>>>{};
+    if (raw is Map) {
+      raw.forEach((d, m) {
+        final inner = <String, List<SetLog>>{};
+        (m as Map).forEach((ex, l) => inner['$ex'] = [for (final e in l as List) SetLog.fromJson(e as Map<String, dynamic>)]);
+        out['$d'] = inner;
+      });
+    }
+    return out;
+  }
+
+  /// The sets logged for an exercise on a date, grown to at least n rows.
+  List<SetLog> setsFor(String date, String ex, int n, int reps, double kg) {
+    final l = wlog.putIfAbsent(date, () => {}).putIfAbsent(ex, () => []);
+    while (l.length < n) {
+      l.add(SetLog(reps, kg, false));
+    }
+    return l;
+  }
+
+  /// The most recent earlier sets of this exercise that had a weight.
+  SetLog? lastSet(String date, String ex) {
+    final keys = wlog.keys.where((k) => k.compareTo(date) < 0).toList()..sort();
+    for (final k in keys.reversed) {
+      final l = wlog[k]![ex];
+      if (l == null) continue;
+      for (final s in l.reversed) {
+        if (s.done && s.kg > 0) return s;
+      }
+    }
+    return null;
+  }
+
+  int totalSetsDone() {
+    var n = 0;
+    for (final m in wlog.values) {
+      for (final l in m.values) {
+        n += l.where((s) => s.done).length;
+      }
+    }
+    return n;
   }
 
   // ---- food diary ----
@@ -155,6 +204,7 @@ class AppState extends ChangeNotifier {
         'food': food.map((k, v) => MapEntry(k, v.map((e) => e.toJson()).toList())),
         'cfoods': customFoods.map((f) => f.toJson()).toList(),
         'swaps': swaps,
+        'wlog': _wlogTo(),
         'prefs': {for (final k in prefKeys) k: set[k]},
       });
 
@@ -174,6 +224,7 @@ class AppState extends ChangeNotifier {
       customFoods = [for (final e in (j['cfoods'] ?? []) as List) Food.fromJson(e as Map<String, dynamic>)];
       swaps = {for (final e in ((j['swaps'] ?? {}) as Map<String, dynamic>).entries) e.key: '${e.value}'};
       food = nf;
+      wlog = _wlogFrom(j['wlog']);
       final pr = j['prefs'];
       if (pr is Map) {
         for (final k in prefKeys) {
@@ -205,6 +256,10 @@ class AppState extends ChangeNotifier {
       if (i.total > 0 && i.score >= 0.999) perfect++;
     });
     final st = streak();
+    var goodNights = 0;
+    logs.forEach((k, v) {
+      if (v.sleep >= 7) goodNights++;
+    });
     var lost = 0.0;
     if (weights.length >= 2) lost = weights.first.kg - weights.last.kg;
     return [
@@ -217,6 +272,8 @@ class AppState extends ChangeNotifier {
       Achv('steps', '10,000 steps', 'Walk 10,000 steps in a day', Icons.directions_walk, maxSteps >= 10000),
       Achv('w5', 'Weight tracker', 'Log your weight 5 times', Icons.monitor_weight_outlined, weights.length >= 5),
       Achv('m1', 'Tape measure', 'Log your first measurements', Icons.straighten, measures.isNotEmpty),
+      Achv('sleep', 'Well rested', 'Sleep 7 hours or more on 5 nights', Icons.bedtime_outlined, goodNights >= 5),
+      Achv('sets', 'Set counter', 'Complete 30 logged sets', Icons.fitness_center, totalSetsDone() >= 30),
       Achv('l1', 'First kilo', 'Lose 1 kg from your first entry', Icons.trending_down, lost >= 1),
       Achv('l5', 'Five kilos', 'Lose 5 kg from your first entry', Icons.emoji_events_outlined, lost >= 5),
     ];
@@ -226,7 +283,14 @@ class AppState extends ChangeNotifier {
     final cutoff = isoDate(DateTime.now().subtract(const Duration(days: 120)));
     logs.removeWhere((k, _) => k.compareTo(cutoff) < 0);
     food.removeWhere((k, _) => k.compareTo(cutoff) < 0);
+    wlog.removeWhere((k, _) => k.compareTo(cutoff) < 0);
     _rebuild();
+    persist();
+    notifyListeners();
+  }
+
+  /// Writes the data to the device without rebuilding the screens.
+  void persist() {
     final sp = _sp;
     if (sp != null) {
       sp.setString(
@@ -240,9 +304,9 @@ class AppState extends ChangeNotifier {
             'cfoods': customFoods.map((f) => f.toJson()).toList(),
             'swaps': swaps,
             'shop': shopDone.toList(),
+            'wlog': _wlogTo(),
           }));
     }
-    notifyListeners();
   }
 
   void go(String m) {
@@ -425,4 +489,13 @@ class FoodEntry {
   FoodEntry(this.id, this.servings, this.slot);
   Map<String, dynamic> toJson() => {'id': id, 's': servings, 'slot': slot};
   static FoodEntry fromJson(Map<String, dynamic> j) => FoodEntry(j['id'] as String, ((j['s'] ?? 1) as num).toDouble(), (j['slot'] ?? 'Snack') as String);
+}
+
+class SetLog {
+  int reps;
+  double kg;
+  bool done;
+  SetLog(this.reps, this.kg, this.done);
+  Map<String, dynamic> toJson() => {'r': reps, 'kg': kg, 'd': done};
+  static SetLog fromJson(Map<String, dynamic> j) => SetLog(((j['r'] ?? 0) as num).toInt(), ((j['kg'] ?? 0) as num).toDouble(), j['d'] == true);
 }

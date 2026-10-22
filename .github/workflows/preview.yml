@@ -60,8 +60,16 @@ jobs:
           curl -sS -o /dev/null -w 'index http %{http_code}\n' http://localhost:8080/
           mkdir -p shots
           cd preview
-          BASE_URL=http://localhost:8080/ OUT_DIR=../shots node shoot.mjs 2>&1 | tee ../shots/run-log.txt
+          BASE_URL=http://localhost:8080/ OUT_DIR=../shots CLIP_DIR=../clip node shoot.mjs 2>&1 | tee ../shots/run-log.txt
           test -s ../shots/01-dashboard.png
+
+      - name: Turn the recording into a video file
+        if: always()
+        run: |
+          sudo apt-get install -y ffmpeg > /dev/null
+          if ls clip/*.webm > /dev/null 2>&1; then
+            ffmpeg -y -i clip/*.webm -c:v libx264 -pix_fmt yuv420p -movflags +faststart shots/animated-preview.mp4
+          fi
 
       - name: Publish screenshots to the preview release
         if: always()

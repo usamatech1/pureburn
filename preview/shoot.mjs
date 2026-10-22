@@ -83,4 +83,31 @@ for (const [name, mod] of screens) {
   try { await shoot(name, mod, false); } catch (e) { console.log('FAILED', name, String(e).slice(0, 400)); }
 }
 try { await shoot('10-dashboard-dark', 'dashboard', true); } catch (e) { console.log('FAILED dark', String(e).slice(0, 400)); }
+// A short screen recording so the animations can be seen.
+try {
+  const ctx = await browser.newContext({
+    viewport: { width: 390, height: 844 },
+    deviceScaleFactor: 1,
+    isMobile: true,
+    hasTouch: true,
+    locale: 'en-US',
+    timezoneId: 'Asia/Karachi',
+    recordVideo: { dir: process.env.CLIP_DIR || '../clip', size: { width: 390, height: 844 } },
+  });
+  await ctx.addInitScript((v) => {
+    try { localStorage.setItem('flutter.pureburn-state-v1', v); } catch (e) {}
+  }, stored);
+  const page = await ctx.newPage();
+  for (const mod of ['dashboard', 'bmi', 'dex', 'ddiet', 'dietplan', 'progress']) {
+    await page.goto(`${BASE}?mod=${mod}`, { waitUntil: 'domcontentloaded', timeout: 20000 });
+    await page.waitForSelector('flt-glass-pane', { timeout: 25000, state: 'attached' });
+    await page.waitForTimeout(2500);
+    await page.mouse.wheel(0, 500);
+    await page.waitForTimeout(1500);
+    await page.mouse.wheel(0, 700);
+    await page.waitForTimeout(1500);
+    console.log('clip', mod);
+  }
+  await ctx.close();
+} catch (e) { console.log('CLIP FAILED', String(e).slice(0, 400)); }
 await browser.close();

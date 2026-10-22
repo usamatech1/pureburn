@@ -121,6 +121,7 @@ class DashboardPage extends StatelessWidget {
     final st = app.streak();
     final L = app.logs[today];
     final row = app.rowFor(today);
+    final kcalFrac = (d.plan != null && d.plan!.kcal > 0) ? info.kcal / d.plan!.kcal : 0.0;
     final ups = <Widget>[];
     Widget up(bool done, String title, String sub, String to) => Padding(
           padding: const EdgeInsets.only(bottom: 8),
@@ -157,10 +158,10 @@ class DashboardPage extends StatelessWidget {
 
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       _grid([
-        Stat('Workout today', info.exT > 0 ? '${info.exD}/${info.exT}' : 'Rest', s: 'Tap to open', onTap: () => app.go('dex')),
-        Stat('Calories eaten', '${info.kcal}', s: d.plan != null ? 'Target ${d.plan!.kcal} kcal' : '', onTap: () => app.go('ddiet')),
-        Stat('Water', '${info.water}/${info.wg}', s: 'Glasses of 250 ml', onTap: () => app.go('ddiet')),
-        Stat('Steps', '${info.steps}', s: 'Goal ${d.stepGoal}', onTap: () => app.go('dex')),
+        _ringTile(context, 'Workout today', info.exT > 0 ? info.exD / info.exT : 0.0, info.exT > 0 ? '${info.exD}/${info.exT}' : 'Rest', info.exT > 0 ? 'Tasks done' : 'No session today', 'dex'),
+        _ringTile(context, 'Calories eaten', kcalFrac, '${(kcalFrac * 100).round()}%', '${info.kcal} of ${d.plan?.kcal ?? 0} kcal', 'ddiet'),
+        _ringTile(context, 'Water', info.wg > 0 ? info.water / info.wg : 0.0, '${info.water}/${info.wg}', 'Glasses of 250 ml', 'ddiet'),
+        _ringTile(context, 'Steps', d.stepGoal > 0 ? info.steps / d.stepGoal : 0.0, '${d.stepGoal > 0 ? (info.steps * 100 / d.stepGoal).round() : 0}%', '${info.steps} of ${d.stepGoal}', 'dex'),
         Stat('BMI', d.bmi.toStringAsFixed(1), s: '${d.cat} · ${app.fmtW(last)}', inverse: true, onTap: () => app.go('bmi')),
         Stat('Streak', '$st ${st == 1 ? 'day' : 'days'}', s: 'See progress', onTap: () => app.go('progress')),
       ], min: 170),
@@ -183,8 +184,13 @@ class WeightChart extends StatelessWidget {
     return SizedBox(
       height: 200,
       width: double.infinity,
-      child: CustomPaint(
-        painter: LineChart(app.weights.map((w) => app.toDisp(w.kg)).toList(), d.ok && d.goal != 'maintain' ? app.toDisp(d.tKg) : null, fg(context), line(context)),
+      child: TweenAnimationBuilder<double>(
+        tween: Tween<double>(begin: 0, end: 1),
+        duration: const Duration(milliseconds: 1400),
+        curve: Curves.easeInOut,
+        builder: (context, t, _) => CustomPaint(
+          painter: LineChart(app.weights.map((w) => app.toDisp(w.kg)).toList(), d.ok && d.goal != 'maintain' ? app.toDisp(d.tKg) : null, fg(context), line(context), t),
+        ),
       ),
     );
   }
@@ -390,7 +396,12 @@ class BmiPage extends StatelessWidget {
         const Eyebrow('Your BMI', onDark: true),
         const SizedBox(height: 8),
         Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
-          Text(d.bmi.toStringAsFixed(1), style: const TextStyle(fontSize: 88, fontWeight: FontWeight.w200, height: 0.95, letterSpacing: -3)),
+          TweenAnimationBuilder<double>(
+            tween: Tween<double>(begin: 0, end: d.bmi),
+            duration: const Duration(milliseconds: 1200),
+            curve: Curves.easeOutCubic,
+            builder: (context, v, _) => Text(v.toStringAsFixed(1), style: const TextStyle(fontSize: 88, fontWeight: FontWeight.w200, height: 0.95, letterSpacing: -3)),
+          ),
           const SizedBox(width: 16),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
@@ -420,7 +431,12 @@ class BmiPage extends StatelessWidget {
                   top: 50,
                   child: Text(segs[i].$3.toUpperCase(), textAlign: TextAlign.center, style: const TextStyle(fontSize: 9, letterSpacing: 0.8, color: Color(0xFFA6A6A6))),
                 ),
-              Positioned(left: pos(d.bmi) * w - 1, top: 4, child: Container(width: 3, height: 44, color: Colors.white)),
+              TweenAnimationBuilder<double>(
+                tween: Tween<double>(begin: 0, end: pos(d.bmi)),
+                duration: const Duration(milliseconds: 1400),
+                curve: Curves.easeOutCubic,
+                builder: (context, v, _) => Stack(children: [Positioned(left: v * w - 1, top: 4, child: Container(width: 3, height: 44, color: Colors.white))]),
+              ),
             ]),
           );
         }),
@@ -737,6 +753,8 @@ class DietPlanPage extends StatelessWidget {
         Stat('Daily split', '${p.pG}P / ${p.cG}C / ${p.fG}F', s: 'Grams of protein, carbs and fat'),
       ], min: 220),
       _gap(),
+      Box(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [const H2('Where your calories come from'), MacroBar(pG: p.pG, cG: p.cG, fG: p.fG)])),
+      _gap(),
       Box(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           const H2('Sample day, with cost'),
@@ -1032,9 +1050,14 @@ class WeekBars extends StatelessWidget {
                   height: 90,
                   alignment: Alignment.bottomCenter,
                   decoration: BoxDecoration(color: soft(context), borderRadius: BorderRadius.circular(8)),
-                  child: FractionallySizedBox(
-                    heightFactor: fracs[i].clamp(0.0, 1.0),
-                    child: Container(decoration: BoxDecoration(color: fg(context), borderRadius: BorderRadius.circular(8))),
+                  child: TweenAnimationBuilder<double>(
+                    tween: Tween<double>(begin: 0, end: (fracs[i].isNaN ? 0.0 : fracs[i]).clamp(0.0, 1.0)),
+                    duration: Duration(milliseconds: 600 + i * 110),
+                    curve: Curves.easeOutCubic,
+                    builder: (context, h, _) => FractionallySizedBox(
+                      heightFactor: h,
+                      child: Container(decoration: BoxDecoration(color: fg(context), borderRadius: BorderRadius.circular(8))),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 6),
@@ -1227,3 +1250,19 @@ Widget _sectionCards(BuildContext context) {
     secCard(Icons.show_chart, 'Progress', app.weights.isEmpty ? 'Log your weight to start your chart' : '${app.weights.length} weight entries · latest ${app.fmtW(app.weights.last.kg)}', 'progress'),
   ], min: 300);
 }
+
+
+Widget _ringTile(BuildContext context, String title, double frac, String center, String sub, String to) => InkWell(
+      borderRadius: BorderRadius.circular(22),
+      onTap: () => app.go(to),
+      child: Box(
+        padding: const EdgeInsets.all(16),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Eyebrow(title),
+          const SizedBox(height: 12),
+          Center(child: RingGauge(fraction: frac, center: center, size: 84)),
+          const SizedBox(height: 12),
+          Center(child: Muted(sub, size: 12.5)),
+        ]),
+      ),
+    );

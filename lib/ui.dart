@@ -87,7 +87,12 @@ class Bar extends StatelessWidget {
   @override
   Widget build(BuildContext context) => ClipRRect(
         borderRadius: BorderRadius.circular(99),
-        child: LinearProgressIndicator(value: v.clamp(0.0, 1.0), minHeight: 6, backgroundColor: soft(context), color: fg(context)),
+        child: TweenAnimationBuilder<double>(
+          tween: Tween<double>(begin: 0, end: (v.isNaN ? 0.0 : v).clamp(0.0, 1.0)),
+          duration: const Duration(milliseconds: 900),
+          curve: Curves.easeOutCubic,
+          builder: (context, val, _) => LinearProgressIndicator(value: val, minHeight: 6, backgroundColor: soft(context), color: fg(context)),
+        ),
       );
 }
 
@@ -188,7 +193,8 @@ class LineChart extends CustomPainter {
   final List<double> ys;
   final double? target;
   final Color ink, grid;
-  LineChart(this.ys, this.target, this.ink, this.grid);
+  final double progress;
+  LineChart(this.ys, this.target, this.ink, this.grid, [this.progress = 1.0]);
   @override
   void paint(Canvas canvas, Size size) {
     if (ys.length < 2) return;
@@ -218,12 +224,107 @@ class LineChart extends CustomPainter {
     for (var i = 1; i < ys.length; i++) {
       path.lineTo(x(i), y(ys[i]));
     }
-    canvas.drawPath(path, Paint()..color = ink..style = PaintingStyle.stroke..strokeWidth = 2..strokeJoin = StrokeJoin.round);
+    final linePaint = Paint()..color = ink..style = PaintingStyle.stroke..strokeWidth = 2..strokeJoin = StrokeJoin.round..strokeCap = StrokeCap.round;
+    if (progress >= 1.0) {
+      canvas.drawPath(path, linePaint);
+    } else {
+      for (final m in path.computeMetrics()) {
+        canvas.drawPath(m.extractPath(0, m.length * progress), linePaint);
+      }
+    }
     for (var i = 0; i < ys.length; i++) {
-      canvas.drawCircle(Offset(x(i), y(ys[i])), 4, Paint()..color = ink);
+      final at = i / (ys.length - 1);
+      if (at <= progress + 0.0001) {
+        canvas.drawCircle(Offset(x(i), y(ys[i])), 4, Paint()..color = ink);
+      }
     }
   }
 
   @override
   bool shouldRepaint(covariant LineChart o) => true;
+}
+
+
+// ---------------- animated gauges ----------------
+class RingGauge extends StatelessWidget {
+  final double fraction;
+  final String center;
+  final double size;
+  const RingGauge({super.key, required this.fraction, required this.center, this.size = 84});
+  @override
+  Widget build(BuildContext context) {
+    final f = fraction.isNaN ? 0.0 : fraction.clamp(0.0, 1.0);
+    return TweenAnimationBuilder<double>(
+      tween: Tween<double>(begin: 0, end: f),
+      duration: const Duration(milliseconds: 1100),
+      curve: Curves.easeOutCubic,
+      builder: (context, v, _) => SizedBox(
+        width: size,
+        height: size,
+        child: CustomPaint(
+          painter: _RingPainter(v, fg(context), soft(context)),
+          child: Center(child: Text(center, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600))),
+        ),
+      ),
+    );
+  }
+}
+
+class _RingPainter extends CustomPainter {
+  final double v;
+  final Color ink, track;
+  _RingPainter(this.v, this.ink, this.track);
+  @override
+  void paint(Canvas canvas, Size size) {
+    const w = 9.0;
+    final r = Rect.fromLTWH(w / 2, w / 2, size.width - w, size.height - w);
+    canvas.drawArc(r, 0, 6.283185307179586, false, Paint()..color = track..style = PaintingStyle.stroke..strokeWidth = w);
+    if (v > 0) {
+      canvas.drawArc(r, -1.5707963267948966, 6.283185307179586 * v, false, Paint()..color = ink..style = PaintingStyle.stroke..strokeWidth = w..strokeCap = StrokeCap.round);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _RingPainter o) => o.v != v || o.ink != ink || o.track != track;
+}
+
+// One bar split in three parts (protein, carbs, fat by calories) that fills in from the left.
+class MacroBar extends StatelessWidget {
+  final int pG, cG, fG;
+  const MacroBar({super.key, required this.pG, required this.cG, required this.fG});
+  @override
+  Widget build(BuildContext context) {
+    final p = pG * 4, c = cG * 4, f = fG * 9;
+    final total = (p + c + f) <= 0 ? 1 : (p + c + f);
+    Widget legend(String name, int grams, int kcal, double op) => Row(mainAxisSize: MainAxisSize.min, children: [
+          Container(width: 10, height: 10, decoration: BoxDecoration(color: fg(context).withOpacity(op), borderRadius: BorderRadius.circular(3))),
+          const SizedBox(width: 6),
+          Text('$name ${grams}g · ${(kcal * 100 / total).round()}%', style: const TextStyle(fontSize: 12.5)),
+        ]);
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      TweenAnimationBuilder<double>(
+        tween: Tween<double>(begin: 0, end: 1),
+        duration: const Duration(milliseconds: 1100),
+        curve: Curves.easeOutCubic,
+        builder: (context, t, _) => ClipRRect(
+          borderRadius: BorderRadius.circular(99),
+          child: Container(
+            height: 16,
+            color: soft(context),
+            alignment: Alignment.centerLeft,
+            child: FractionallySizedBox(
+              widthFactor: t,
+              child: Row(children: [
+                Expanded(flex: p <= 0 ? 1 : p, child: Container(color: fg(context))),
+                Expanded(flex: c <= 0 ? 1 : c, child: Container(color: fg(context).withOpacity(0.6))),
+                Expanded(flex: f <= 0 ? 1 : f, child: Container(color: fg(context).withOpacity(0.3))),
+              ]),
+            ),
+          ),
+        ),
+      ),
+      const SizedBox(height: 12),
+      Wrap(spacing: 16, runSpacing: 6, children: [legend('Protein', pG, p, 1.0), legend('Carbs', cG, c, 0.6), legend('Fat', fG, f, 0.3)]),
+    ]);
+  }
 }

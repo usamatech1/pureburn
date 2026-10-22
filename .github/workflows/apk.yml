@@ -66,10 +66,10 @@ jobs:
 
       # The build number goes up on every run, as Google Play requires for each upload.
       - name: Build release APK
-        run: flutter build apk --release --dart-define=FB_API_KEY=${{ vars.FB_API_KEY }} --dart-define=FB_PROJECT=${{ vars.FB_PROJECT }} --dart-define=FB_REGION=${{ vars.FB_REGION }} --dart-define=GOOGLE_CLIENT_ID=${{ vars.GOOGLE_CLIENT_ID }} --build-number=${{ github.run_number }}
+        run: flutter build apk --release --dart-define=FB_API_KEY=${{ vars.FB_API_KEY }} --dart-define=FB_PROJECT=${{ vars.FB_PROJECT }} --dart-define=FB_REGION=${{ vars.FB_REGION }} --dart-define=GOOGLE_CLIENT_ID=${{ vars.GOOGLE_CLIENT_ID }} --dart-define=COACH_URL=${{ vars.COACH_URL }} --build-number=${{ github.run_number }}
 
       - name: Build release App Bundle for Google Play
-        run: flutter build appbundle --release --dart-define=FB_API_KEY=${{ vars.FB_API_KEY }} --dart-define=FB_PROJECT=${{ vars.FB_PROJECT }} --dart-define=FB_REGION=${{ vars.FB_REGION }} --dart-define=GOOGLE_CLIENT_ID=${{ vars.GOOGLE_CLIENT_ID }} --build-number=${{ github.run_number }}
+        run: flutter build appbundle --release --dart-define=FB_API_KEY=${{ vars.FB_API_KEY }} --dart-define=FB_PROJECT=${{ vars.FB_PROJECT }} --dart-define=FB_REGION=${{ vars.FB_REGION }} --dart-define=GOOGLE_CLIENT_ID=${{ vars.GOOGLE_CLIENT_ID }} --dart-define=COACH_URL=${{ vars.COACH_URL }} --build-number=${{ github.run_number }}
 
       - name: Name the files
         run: |

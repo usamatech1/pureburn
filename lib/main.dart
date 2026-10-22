@@ -30,6 +30,19 @@ ThemeData _theme(Brightness b) {
   );
   return ThemeData(
     useMaterial3: true,
+    visualDensity: VisualDensity.standard,
+    materialTapTargetSize: MaterialTapTargetSize.padded,
+    navigationBarTheme: NavigationBarThemeData(
+      height: 68,
+      backgroundColor: dark ? const Color(0xE60B0908) : const Color(0xF2FFF8F1),
+      indicatorColor: scheme.primary.withOpacity(0.2),
+      surfaceTintColor: Colors.transparent,
+      labelTextStyle: WidgetStateProperty.resolveWith((s) => TextStyle(fontSize: 11.5, fontWeight: s.contains(WidgetState.selected) ? FontWeight.w700 : FontWeight.w500)),
+      iconTheme: WidgetStateProperty.resolveWith((s) => IconThemeData(size: 24, color: s.contains(WidgetState.selected) ? scheme.primary : (dark ? const Color(0xFF9A9A9A) : const Color(0xFF6E6E6E)))),
+    ),
+    textButtonTheme: TextButtonThemeData(style: TextButton.styleFrom(minimumSize: const Size(48, 48))),
+    iconButtonTheme: IconButtonThemeData(style: IconButton.styleFrom(minimumSize: const Size(48, 48))),
+    segmentedButtonTheme: SegmentedButtonThemeData(style: ButtonStyle(minimumSize: WidgetStateProperty.all(const Size(0, 48)))),
     colorScheme: scheme,
     scaffoldBackgroundColor: scheme.surface,
     switchTheme: SwitchThemeData(
@@ -44,13 +57,14 @@ ThemeData _theme(Brightness b) {
     ),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
       fillColor: dark ? const Color(0xFF181818) : const Color(0xFFEFEFEF),
       border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: scheme.outline)),
       enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: scheme.outline)),
       focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: scheme.primary, width: 1.5)),
     ),
-    filledButtonTheme: FilledButtonThemeData(style: FilledButton.styleFrom(shape: const StadiumBorder(), padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 14))),
-    outlinedButtonTheme: OutlinedButtonThemeData(style: OutlinedButton.styleFrom(shape: const StadiumBorder(), padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 14))),
+    filledButtonTheme: FilledButtonThemeData(style: FilledButton.styleFrom(minimumSize: const Size(64, 50), shape: const StadiumBorder(), padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 14))),
+    outlinedButtonTheme: OutlinedButtonThemeData(style: OutlinedButton.styleFrom(minimumSize: const Size(64, 50), shape: const StadiumBorder(), padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 14))),
   );
 }
 
@@ -105,6 +119,8 @@ const mods = [
   ModDef('account', 'Account and sync', 'Account', Icons.cloud_sync_outlined),
   ModDef('settings', 'Settings', 'More', Icons.tune, 'More'),
 ];
+
+final GlobalKey<ScaffoldState> _shellKey = GlobalKey<ScaffoldState>();
 
 class Shell extends StatelessWidget {
   const Shell({super.key});
@@ -193,8 +209,30 @@ class Shell extends StatelessWidget {
     if (wide) {
       return LockGate(child: Ambient(child: Scaffold(backgroundColor: Colors.transparent, body: Row(children: [_side(context), Expanded(child: animated)]))));
     }
+    const bottom = ['dashboard', 'workout', 'ddiet', 'progress'];
+    final idx = bottom.contains(app.mod) ? bottom.indexOf(app.mod) : 4;
     return LockGate(child: Ambient(child: Scaffold(
+      key: _shellKey,
       backgroundColor: Colors.transparent,
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: idx,
+        labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+        onDestinationSelected: (i) {
+          buzz();
+          if (i == 4) {
+            _shellKey.currentState?.openDrawer();
+          } else {
+            app.go(bottom[i]);
+          }
+        },
+        destinations: const [
+          NavigationDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home_rounded), label: 'Home'),
+          NavigationDestination(icon: Icon(Icons.fitness_center), label: 'Workout'),
+          NavigationDestination(icon: Icon(Icons.restaurant_outlined), selectedIcon: Icon(Icons.restaurant), label: 'Diet'),
+          NavigationDestination(icon: Icon(Icons.show_chart), label: 'Progress'),
+          NavigationDestination(icon: Icon(Icons.menu_rounded), label: 'More'),
+        ],
+      ),
       appBar: AppBar(title: app.mod == 'dashboard' ? const BrandLockup() : Text(m.title, style: const TextStyle(fontWeight: FontWeight.w700)), backgroundColor: Colors.transparent, elevation: 0, scrolledUnderElevation: 0),
       drawer: Builder(builder: (ctx) => Drawer(width: 268, child: _side(ctx, drawer: true))),
       body: animated,

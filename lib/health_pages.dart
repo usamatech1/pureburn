@@ -1,10 +1,13 @@
 // Health modes: blood sugar and blood pressure logs with general guidance.
 // This is a diary and a set of general tips. It never diagnoses and never advises on medicines.
 import 'package:flutter/material.dart' hide Text;
+import 'package:flutter/services.dart';
 import 'i18n.dart';
 import 'logic.dart';
 import 'main.dart' show app;
 import 'ui.dart';
+
+final List<TextInputFormatter> _digits = [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(3)];
 
 const emergencyNote = 'In an emergency call your local emergency number (1122 in Pakistan) or go to the nearest hospital.';
 
@@ -226,7 +229,7 @@ class _HealthPageState extends State<HealthPage> {
           const H2('Blood sugar'),
           const Muted('Log a reading from your glucose meter.', size: 12.5),
           const SizedBox(height: 10),
-          TextField(controller: sugar, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Sugar (mg/dL)')),
+          TextField(controller: sugar, keyboardType: TextInputType.number, inputFormatters: _digits, textInputAction: TextInputAction.done, decoration: const InputDecoration(labelText: 'Sugar (mg/dL)')),
           const SizedBox(height: 10),
           Wrap(spacing: 8, runSpacing: 8, children: [
             for (final e in sugarCtx.entries) ChoiceChip(label: Text(e.value), selected: ctx == e.key, onSelected: (_) => setState(() => ctx = e.key)),
@@ -273,12 +276,12 @@ class _HealthPageState extends State<HealthPage> {
           const Muted('Sit quietly for 5 minutes before measuring. Log the top and bottom numbers.', size: 12.5),
           const SizedBox(height: 10),
           Row(children: [
-            Expanded(child: TextField(controller: sys, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Top (systolic)'))),
+            Expanded(child: TextField(controller: sys, keyboardType: TextInputType.number, inputFormatters: _digits, textInputAction: TextInputAction.next, decoration: const InputDecoration(labelText: 'Top (systolic)'))),
             const SizedBox(width: 10),
-            Expanded(child: TextField(controller: dia, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Bottom (diastolic)'))),
+            Expanded(child: TextField(controller: dia, keyboardType: TextInputType.number, inputFormatters: _digits, textInputAction: TextInputAction.next, decoration: const InputDecoration(labelText: 'Bottom (diastolic)'))),
           ]),
           const SizedBox(height: 10),
-          TextField(controller: pulse, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Pulse (optional)')),
+          TextField(controller: pulse, keyboardType: TextInputType.number, inputFormatters: _digits, textInputAction: TextInputAction.done, decoration: const InputDecoration(labelText: 'Pulse (optional)')),
           const SizedBox(height: 12),
           FilledButton(onPressed: _saveBp, child: const Text('Save reading')),
         ]),

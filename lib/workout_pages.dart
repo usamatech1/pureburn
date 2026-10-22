@@ -195,6 +195,8 @@ class _WorkoutPageState extends State<WorkoutPage> {
             key: ValueKey('$date|${e.name}|$i|r'),
             initialValue: '${s.reps}',
             keyboardType: TextInputType.number,
+            inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(4)],
+            textInputAction: TextInputAction.next,
             textAlign: TextAlign.center,
             decoration: const InputDecoration(isDense: true, hintText: '0', contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 13)),
             onChanged: (v) {
@@ -210,6 +212,8 @@ class _WorkoutPageState extends State<WorkoutPage> {
             key: ValueKey('$date|${e.name}|$i|k'),
             initialValue: s.kg == 0 ? '' : tidy(s.kg),
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')), LengthLimitingTextInputFormatter(6)],
+            textInputAction: TextInputAction.done,
             textAlign: TextAlign.center,
             decoration: const InputDecoration(isDense: true, hintText: 'kg', contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 13)),
             onChanged: (v) {

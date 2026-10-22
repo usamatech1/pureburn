@@ -109,6 +109,7 @@ class WeekStrip extends StatelessWidget {
 }
 
 // ---------------- dashboard ----------------
+// The dashboard is only a light summary of today. Full records live in each section.
 class DashboardPage extends StatelessWidget {
   const DashboardPage({super.key});
   @override
@@ -118,14 +119,6 @@ class DashboardPage extends StatelessWidget {
     final info = app.dayInfo(today);
     final last = app.weights.isEmpty ? app.p.weightKg : app.weights.last.kg;
     final st = app.streak();
-    final wk = app.weekDates();
-    final infos = wk.map(app.dayInfo).toList();
-    final avg = (infos.fold<double>(0, (a, x) => a + x.score) / 7 * 100).round();
-    final sched = wk.where((x) => app.rowFor(x) != null).length;
-    var doneW = 0;
-    for (var i = 0; i < 7; i++) {
-      if (app.rowFor(wk[i]) != null && infos[i].exT > 0 && infos[i].exD / infos[i].exT >= 0.8) doneW++;
-    }
     final L = app.logs[today];
     final row = app.rowFor(today);
     final ups = <Widget>[];
@@ -162,63 +155,19 @@ class DashboardPage extends StatelessWidget {
     ups.add(up(info.water >= info.wg, 'Water', '${info.water} of ${info.wg} glasses', 'ddiet'));
     ups.add(up(info.steps >= d.stepGoal, 'Steps', '${info.steps} of ${d.stepGoal}', 'dex'));
 
-    final recent = <Widget>[];
-    for (var i = wk.length - 1; i >= 0; i--) {
-      if (wk[i].compareTo(today) > 0) continue;
-      recent.add(Padding(
-        padding: const EdgeInsets.only(bottom: 8),
-        child: Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(border: Border.all(color: line(context)), borderRadius: BorderRadius.circular(14)),
-          child: Row(children: [
-            Expanded(child: Text(dayName(parseIso(wk[i])), style: const TextStyle(fontWeight: FontWeight.w500))),
-            Text('${infos[i].done} of ${infos[i].total} tasks  '),
-            Pill('${(infos[i].score * 100).round()}%'),
-          ]),
-        ),
-      ));
-    }
-
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       _grid([
-        Stat('Workout today', info.exT > 0 ? '${info.exD}/${info.exT}' : 'Rest', s: '$sched sessions this week, $doneW done'),
-        Stat('Calories eaten', '${info.kcal}', s: d.plan != null ? 'Target ${d.plan!.kcal} kcal' : ''),
-        Stat('Water', '${info.water}/${info.wg}', s: 'Glasses of 250 ml'),
-        Stat('Steps', '${info.steps}', s: 'Goal ${d.stepGoal}'),
-        Stat('BMI', d.bmi.toStringAsFixed(1), s: '${d.cat} · ${app.fmtW(last)}', inverse: true),
-        Stat('Streak', '$st ${st == 1 ? 'day' : 'days'}', s: 'Week average $avg%'),
+        Stat('Workout today', info.exT > 0 ? '${info.exD}/${info.exT}' : 'Rest', s: 'Tap to open', onTap: () => app.go('dex')),
+        Stat('Calories eaten', '${info.kcal}', s: d.plan != null ? 'Target ${d.plan!.kcal} kcal' : '', onTap: () => app.go('ddiet')),
+        Stat('Water', '${info.water}/${info.wg}', s: 'Glasses of 250 ml', onTap: () => app.go('ddiet')),
+        Stat('Steps', '${info.steps}', s: 'Goal ${d.stepGoal}', onTap: () => app.go('dex')),
+        Stat('BMI', d.bmi.toStringAsFixed(1), s: '${d.cat} · ${app.fmtW(last)}', inverse: true, onTap: () => app.go('bmi')),
+        Stat('Streak', '$st ${st == 1 ? 'day' : 'days'}', s: 'See progress', onTap: () => app.go('progress')),
       ], min: 170),
-      _gap(),
-      Box(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [const H2('Weight trend'), WeightChart()])),
-      _gap(),
-      Box(
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          const H2('Tasks done this week'),
-          SizedBox(
-            height: 130,
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: List.generate(7, (i) => Expanded(
-                    child: Column(mainAxisAlignment: MainAxisAlignment.end, children: [
-                      Container(
-                        width: 22,
-                        height: 100,
-                        alignment: Alignment.bottomCenter,
-                        decoration: BoxDecoration(color: soft(context), borderRadius: BorderRadius.circular(8)),
-                        child: FractionallySizedBox(heightFactor: infos[i].score.clamp(0.0, 1.0), child: Container(decoration: BoxDecoration(color: fg(context), borderRadius: BorderRadius.circular(8)))),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(dayName(parseIso(wk[i])).substring(0, 3).toUpperCase(), style: TextStyle(fontSize: 9.5, color: muted(context))),
-                    ]),
-                  )),
-            ),
-          ),
-        ]),
-      ),
       _gap(),
       Box(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Eyebrow('Today · ${dayName(DateTime.now())}'), const SizedBox(height: 6), const H2('Task updates'), ...ups])),
       _gap(),
-      Box(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [const H2('Recent days'), ...recent])),
+      const Muted('Your plans, weekly records and charts are in their own sections: BMI and weight, Daily exercise, Daily diet, Exercise plan, Diet plan and Progress.'),
     ]);
   }
 }
@@ -594,6 +543,8 @@ class DexPage extends StatelessWidget {
           Muted('Goal ${d.stepGoal} a day'),
         ]),
       ),
+      _gap(),
+      _exerciseRecord(context),
     ]);
   }
 }
@@ -688,6 +639,8 @@ class DdietPage extends StatelessWidget {
           ]),
         ]),
       ),
+      _gap(),
+      _dietRecord(context),
     ]);
   }
 }
@@ -885,6 +838,8 @@ class _ProgressPageState extends State<ProgressPage> {
       _gap(),
       Box(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [const H2('Weight over time'), WeightChart()])),
       _gap(),
+      _progressWeek(context),
+      _gap(),
       Box(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           const H2('History'),
@@ -1046,20 +1001,229 @@ class ResultPage extends StatelessWidget {
           label: const Text('Edit details'),
         ),
       ]),
-      if (d.blocked != null) ...[_gap(), _blocked(d)] else ...[
-        _gap(28),
-        const Eyebrow('Part 1'),
-        const SizedBox(height: 6),
-        const H1('Exercise plan'),
-        _gap(),
-        const ExPlanPage(),
-        _gap(28),
-        const Eyebrow('Part 2'),
-        const SizedBox(height: 6),
-        const H1('Diet plan'),
-        _gap(),
-        const DietPlanPage(),
-      ],
+      _gap(28),
+      const Eyebrow('Your sections'),
+      const SizedBox(height: 6),
+      const H2('Open any section to see its full result'),
+      if (d.blocked != null) _blocked(d) else _sectionCards(context),
     ]);
   }
+}
+
+
+// ---------------- week bar chart and per-section records ----------------
+class WeekBars extends StatelessWidget {
+  final List<String> dates;
+  final List<double> fracs;
+  final List<String> labels;
+  const WeekBars({super.key, required this.dates, required this.fracs, required this.labels});
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 150,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: List.generate(dates.length, (i) => Expanded(
+              child: Column(mainAxisAlignment: MainAxisAlignment.end, children: [
+                Text(labels[i], style: TextStyle(fontSize: 9.5, color: muted(context))),
+                const SizedBox(height: 4),
+                Container(
+                  width: 22,
+                  height: 90,
+                  alignment: Alignment.bottomCenter,
+                  decoration: BoxDecoration(color: soft(context), borderRadius: BorderRadius.circular(8)),
+                  child: FractionallySizedBox(
+                    heightFactor: fracs[i].clamp(0.0, 1.0),
+                    child: Container(decoration: BoxDecoration(color: fg(context), borderRadius: BorderRadius.circular(8))),
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(dayName(parseIso(dates[i])).substring(0, 3).toUpperCase(), style: TextStyle(fontSize: 9.5, color: muted(context))),
+              ]),
+            )),
+      ),
+    );
+  }
+}
+
+Widget _exerciseRecord(BuildContext context) {
+  final d = app.d;
+  final wk = app.weekDates();
+  final infos = wk.map(app.dayInfo).toList();
+  final today = isoDate(DateTime.now());
+  var sched = 0, done = 0, stepsTotal = 0, stepDays = 0;
+  for (var i = 0; i < 7; i++) {
+    if (app.rowFor(wk[i]) != null) {
+      sched++;
+      if (infos[i].exT > 0 && infos[i].exD / infos[i].exT >= 0.8) done++;
+    }
+    if (wk[i].compareTo(today) <= 0) {
+      stepsTotal += infos[i].steps;
+      stepDays++;
+    }
+  }
+  final avgSteps = stepDays == 0 ? 0 : (stepsTotal / stepDays).round();
+  return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+    Eyebrow('Record'),
+    const SizedBox(height: 6),
+    const H2('This week in exercise'),
+    _grid([
+      Stat('Sessions done', '$done of $sched', s: 'Counted when 80% of tasks are done', inverse: true),
+      Stat('Steps this week', '$stepsTotal', s: 'Average $avgSteps a day'),
+    ], min: 200),
+    _gap(),
+    Box(
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        const H2('Workout tasks done'),
+        WeekBars(
+          dates: wk,
+          fracs: [for (final x in infos) x.exT > 0 ? x.exD / x.exT : 0.0],
+          labels: [for (final x in infos) x.exT > 0 ? '${x.exD}/${x.exT}' : 'Rest'],
+        ),
+      ]),
+    ),
+    _gap(),
+    Box(
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        const H2('Steps each day'),
+        WeekBars(
+          dates: wk,
+          fracs: [for (final x in infos) d.stepGoal > 0 ? x.steps / d.stepGoal : 0.0],
+          labels: [for (final x in infos) x.steps == 0 ? '-' : '${x.steps}'],
+        ),
+        const SizedBox(height: 6),
+        Muted('Goal ${d.stepGoal} a day', size: 12),
+      ]),
+    ),
+  ]);
+}
+
+Widget _dietRecord(BuildContext context) {
+  final d = app.d;
+  final wk = app.weekDates();
+  final infos = wk.map(app.dayInfo).toList();
+  final today = isoDate(DateTime.now());
+  var kcalTotal = 0, kcalDays = 0, waterDays = 0, meals = 0;
+  for (var i = 0; i < 7; i++) {
+    meals += infos[i].mD;
+    if (wk[i].compareTo(today) <= 0) {
+      if (infos[i].kcal > 0) {
+        kcalTotal += infos[i].kcal;
+        kcalDays++;
+      }
+      if (infos[i].water >= infos[i].wg) waterDays++;
+    }
+  }
+  final avgKcal = kcalDays == 0 ? 0 : (kcalTotal / kcalDays).round();
+  final target = d.plan?.kcal ?? 1;
+  return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+    Eyebrow('Record'),
+    const SizedBox(height: 6),
+    const H2('This week in food and water'),
+    _grid([
+      Stat('Average calories', '$avgKcal', s: kcalDays == 0 ? 'No meals ticked yet' : 'Target $target kcal a day', inverse: true),
+      Stat('Meals eaten', '$meals', s: 'Ticked this week'),
+      Stat('Water goal met', '$waterDays of 7 days', s: 'Glasses of 250 ml'),
+    ], min: 170),
+    _gap(),
+    Box(
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        const H2('Calories each day'),
+        WeekBars(
+          dates: wk,
+          fracs: [for (final x in infos) x.kcal / target],
+          labels: [for (final x in infos) x.kcal == 0 ? '-' : '${x.kcal}'],
+        ),
+        const SizedBox(height: 6),
+        Muted('Full bar is your target of $target kcal', size: 12),
+      ]),
+    ),
+    _gap(),
+    Box(
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        const H2('Water each day'),
+        WeekBars(
+          dates: wk,
+          fracs: [for (final x in infos) x.wg > 0 ? x.water / x.wg : 0.0],
+          labels: [for (final x in infos) '${x.water}/${x.wg}'],
+        ),
+      ]),
+    ),
+  ]);
+}
+
+Widget _progressWeek(BuildContext context) {
+  final wk = app.weekDates();
+  final infos = wk.map(app.dayInfo).toList();
+  final today = isoDate(DateTime.now());
+  final avg = (infos.fold<double>(0, (a, x) => a + x.score) / 7 * 100).round();
+  final st = app.streak();
+  final recent = <Widget>[];
+  for (var i = wk.length - 1; i >= 0; i--) {
+    if (wk[i].compareTo(today) > 0) continue;
+    recent.add(Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(border: Border.all(color: line(context)), borderRadius: BorderRadius.circular(14)),
+        child: Row(children: [
+          Expanded(child: Text(dayName(parseIso(wk[i])), style: const TextStyle(fontWeight: FontWeight.w500))),
+          Text('${infos[i].done} of ${infos[i].total} tasks  '),
+          Pill('${(infos[i].score * 100).round()}%'),
+        ]),
+      ),
+    ));
+  }
+  return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+    _grid([
+      Stat('Streak', '$st ${st == 1 ? 'day' : 'days'}', s: 'Days with 60% of tasks done', inverse: true),
+      Stat('Week average', '$avg%', s: 'Workout, meals and water'),
+    ], min: 200),
+    _gap(),
+    Box(
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        const H2('Tasks done this week'),
+        WeekBars(
+          dates: wk,
+          fracs: [for (final x in infos) x.score],
+          labels: [for (final x in infos) '${(x.score * 100).round()}%'],
+        ),
+      ]),
+    ),
+    _gap(),
+    Box(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [const H2('Recent days'), ...recent])),
+  ]);
+}
+
+Widget _sectionCards(BuildContext context) {
+  final d = app.d;
+  final pl = d.plan!, df = d.diet!;
+  final today = isoDate(DateTime.now());
+  final info = app.dayInfo(today);
+  final row = app.rowFor(today);
+  Widget secCard(IconData icon, String title, String result, String to) => InkWell(
+        borderRadius: BorderRadius.circular(22),
+        onTap: () => app.go(to),
+        child: Box(
+          padding: const EdgeInsets.all(16),
+          child: Row(children: [
+            Icon(icon, size: 22),
+            const SizedBox(width: 14),
+            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
+              const SizedBox(height: 2),
+              Muted(result, size: 12.5),
+            ])),
+            const Icon(Icons.chevron_right),
+          ]),
+        ),
+      );
+  return _grid([
+    secCard(Icons.speed_outlined, 'BMI and weight', 'BMI ${d.bmi.toStringAsFixed(1)} · ${d.cat}. Best weight ${app.fmtW(d.target)}', 'bmi'),
+    secCard(Icons.calendar_month_outlined, 'Exercise plan', '${d.g!.days} days a week, about ${(pl.weekly / 10).round() * 10} kcal burned a week', 'explan'),
+    secCard(Icons.list_alt_outlined, 'Diet plan', '${pl.kcal} kcal a day, about ${rs(df.daily, 5)} of food a day', 'dietplan'),
+    secCard(Icons.fitness_center, 'Daily exercise', row == null ? 'Rest day today' : 'Today: ${row.name}', 'dex'),
+    secCard(Icons.restaurant_outlined, 'Daily diet', '${info.kcal} of ${pl.kcal} kcal eaten today', 'ddiet'),
+    secCard(Icons.show_chart, 'Progress', app.weights.isEmpty ? 'Log your weight to start your chart' : '${app.weights.length} weight entries · latest ${app.fmtW(app.weights.last.kg)}', 'progress'),
+  ], min: 300);
 }

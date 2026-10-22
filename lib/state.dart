@@ -48,6 +48,7 @@ class AppState extends ChangeNotifier {
     cloud.exporter = exportJson;
     cloud.onRemote = (t) async => importJson(t);
     await cloud.load(_sp!);
+    final backFromGoogle = cloud.justSignedIn || cloud.status.startsWith('Google sign-in');
     try {
       final raw = _sp!.getString('pureburn-state-v1');
       if (raw != null) {
@@ -80,6 +81,7 @@ class AppState extends ChangeNotifier {
     if (q != null && const ['dashboard', 'profile', 'result', 'bmi', 'dex', 'ddiet', 'explan', 'dietplan', 'progress', 'measure', 'report', 'settings', 'foods', 'shop', 'workout', 'sleep', 'coach', 'challenges', 'account'].contains(q)) {
       mod = q;
     }
+    if (backFromGoogle) mod = 'account';
     unlocked = !(set['lock'] == true && (set['pinHash'] as String).isNotEmpty) || Uri.base.queryParameters.containsKey('nolock');
     loaded = true;
     notifyListeners();

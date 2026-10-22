@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'cloud_stub.dart' if (dart.library.html) 'cloud_web.dart';
 
 const fbApiKey = String.fromEnvironment('FB_API_KEY');
 const fbProject = String.fromEnvironment('FB_PROJECT');
@@ -73,7 +74,40 @@ class CloudService extends ChangeNotifier {
         localChange = (j['lc'] ?? 0) as int;
       }
     } catch (_) {}
+    await _finishWebGoogle();
     notifyListeners();
+  }
+
+  bool justSignedIn = false;
+
+  /// After Google sends the browser back, the page address holds #id_token=...
+  Future<void> _finishWebGoogle() async {
+    if (!kIsWeb) return;
+    final frag = Uri.base.fragment;
+    if (!frag.contains('id_token=')) return;
+    try {
+      final q = Uri.splitQueryString(frag.startsWith('/') ? frag.substring(1) : frag);
+      final idt = q['id_token'];
+      webCleanUrl();
+      if (idt == null || idt.isEmpty) return;
+      final parts = idt.split('.');
+      if (parts.length == 3) {
+        final payload = jsonDecode(utf8.decode(base64Url.decode(base64Url.normalize(parts[1])))) as Map<String, dynamic>;
+        final want = _sp?.getString('pureburn-gnonce');
+        if (want == null || payload['nonce'] != want) {
+          status = 'Google sign-in could not be verified. Please try again.';
+          return;
+        }
+      }
+      await _sp?.remove('pureburn-gnonce');
+      await _auth('signInWithIdp', {'postBody': 'id_token=${Uri.encodeComponent(idt)}&providerId=google.com', 'requestUri': 'http://localhost', 'returnSecureToken': true, 'returnIdpCredential': true});
+      justSignedIn = true;
+      status = 'Signed in with Google. Tap Sync now to save or load your data.';
+    } on CloudError catch (e) {
+      status = e.message;
+    } catch (_) {
+      status = 'Google sign-in failed. Please try again.';
+    }
   }
 
   void _save() {
@@ -104,6 +138,21 @@ class CloudService extends ChangeNotifier {
 
   Future<void> signInGoogle() async {
     if (!googleReady) throw CloudError('Google sign-in is not set up in this build yet.');
+    if (kIsWeb) {
+      // The old popup flow no longer works on the web, so go to Google and come back with an ID token.
+      final nonce = DateTime.now().microsecondsSinceEpoch.toRadixString(36) + uid.hashCode.toRadixString(36);
+      await _sp?.setString('pureburn-gnonce', nonce);
+      final back = '${Uri.base.origin}${Uri.base.path.endsWith('/') ? Uri.base.path : '${Uri.base.path}/'}';
+      webGo(Uri.https('accounts.google.com', '/o/oauth2/v2/auth', {
+        'client_id': googleClientId,
+        'redirect_uri': back,
+        'response_type': 'id_token',
+        'scope': 'openid email profile',
+        'nonce': nonce,
+        'prompt': 'select_account',
+      }).toString());
+      return;
+    }
     try {
       final g = GoogleSignIn(scopes: const ['email'], clientId: kIsWeb ? googleClientId : null, serverClientId: kIsWeb ? null : googleClientId);
       final a = await g.signIn();

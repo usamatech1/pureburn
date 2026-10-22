@@ -62,7 +62,7 @@ const screens = [
 ];
 
 const browser = await chromium.launch({ args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--no-sandbox'] });
-async function shoot(name, mod, dark, w = 390, h = 1500, settings = null) {
+async function shoot(name, mod, dark, w = 390, h = 1500, settings = null, act = null) {
   const ctx = await browser.newContext({
     viewport: { width: w, height: h },
     deviceScaleFactor: w > 600 ? 1 : 2,
@@ -83,6 +83,7 @@ async function shoot(name, mod, dark, w = 390, h = 1500, settings = null) {
   await page.waitForSelector('flt-glass-pane', { timeout: 25000, state: 'attached' });
   await page.waitForTimeout(5000);
   if (settings) console.log('ls', await page.evaluate(() => JSON.stringify(Object.fromEntries(Object.keys(localStorage).map((k) => [k, localStorage.getItem(k).slice(0, 120)])))));
+  if (act) await act(page);
   console.log('rendered', name, await page.evaluate(() => document.querySelectorAll('flt-glass-pane, canvas').length));
   await page.screenshot({ path: `${OUT}/${name}.png`, timeout: 20000 });
   console.log('saved', name);
@@ -94,6 +95,12 @@ for (const [name, mod] of screens) {
 }
 try { await shoot('10-dashboard-dark', 'dashboard', true); } catch (e) { console.log('FAILED dark', String(e).slice(0, 400)); }
 try { await shoot('21-diet-plan-vegetarian-ramadan', 'dietplan', false, 390, 2800, { dietType: 'veg', allergies: ['dairy'], ramadan: true, sehri: '04:30', iftar: '18:30' }); } catch (e) { console.log('FAILED ramadan', String(e).slice(0, 400)); }
+try {
+  await shoot('24-diet-ui-veg-ramadan', 'dietplan', false, 390, 2800, null, async (page) => {
+    await page.mouse.click(319, 610); await page.waitForTimeout(1500);
+    await page.mouse.click(196, 291); await page.waitForTimeout(2500);
+  });
+} catch (e) { console.log('FAILED ui', String(e).slice(0, 400)); }
 try { await shoot('11-dashboard-desktop', 'dashboard', false, 1100, 800); } catch (e) { console.log('FAILED desktop', String(e).slice(0, 400)); }
 
 // A short screen recording so the animations can be seen.

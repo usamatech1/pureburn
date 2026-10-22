@@ -21,6 +21,7 @@ concurrency:
 jobs:
   shots:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
 
@@ -52,9 +53,11 @@ jobs:
           npx playwright install --with-deps chromium
 
       - name: Serve the app and take screenshots
+        timeout-minutes: 6
         run: |
-          (cd build/web && python3 -m http.server 8080 > /tmp/server.log 2>&1 &)
+          nohup python3 -m http.server 8080 --directory build/web > /tmp/server.log 2>&1 < /dev/null &
           sleep 3
+          curl -sS -o /dev/null -w 'index http %{http_code}\n' http://localhost:8080/
           mkdir -p shots
           cd preview
           BASE_URL=http://localhost:8080/ OUT_DIR=../shots node shoot.mjs 2>&1 | tee ../shots/run-log.txt

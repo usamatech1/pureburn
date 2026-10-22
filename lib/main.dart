@@ -87,6 +87,7 @@ const mods = [
   ModDef('ddiet', 'Daily diet', 'Today', Icons.restaurant_outlined),
   ModDef('foods', 'Food diary', 'Today', Icons.restaurant_menu),
   ModDef('sleep', 'Sleep', 'Today', Icons.bedtime_outlined),
+  ModDef('health', 'Health modes', 'Sugar and blood pressure', Icons.monitor_heart_outlined),
   ModDef('explan', 'Exercise plan', 'Weekly plan', Icons.calendar_month_outlined, 'Plans'),
   ModDef('dietplan', 'Diet plan', 'Meal plan', Icons.list_alt_outlined),
   ModDef('shop', 'Shopping list', 'Plans', Icons.shopping_basket_outlined),

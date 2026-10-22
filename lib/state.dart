@@ -78,7 +78,7 @@ class AppState extends ChangeNotifier {
     _rebuild();
     // Deep link for the web version, for example ?mod=progress opens the Progress section.
     final q = Uri.base.queryParameters['mod'];
-    if (q != null && const ['dashboard', 'profile', 'result', 'bmi', 'dex', 'ddiet', 'explan', 'dietplan', 'progress', 'measure', 'report', 'settings', 'foods', 'shop', 'workout', 'sleep', 'coach', 'challenges', 'account'].contains(q)) {
+    if (q != null && const ['dashboard', 'profile', 'result', 'bmi', 'dex', 'ddiet', 'explan', 'dietplan', 'progress', 'measure', 'report', 'settings', 'foods', 'shop', 'workout', 'sleep', 'health', 'coach', 'challenges', 'account'].contains(q)) {
       mod = q;
     }
     if (backFromGoogle) mod = 'account';
@@ -89,7 +89,7 @@ class AppState extends ChangeNotifier {
 
   bool loaded = false;
 
-  static const prefKeys = ['dietType', 'allergies', 'ramadan', 'sehri', 'iftar', 'level', 'restSec', 'sleepGoal'];
+  static const prefKeys = ['dietType', 'allergies', 'ramadan', 'sehri', 'iftar', 'level', 'restSec', 'sleepGoal', 'health', 'healthOk', 'hread'];
 
   SharedPreferences? get prefs => _sp;
 

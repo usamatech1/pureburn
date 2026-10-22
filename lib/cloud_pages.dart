@@ -1,6 +1,7 @@
 // Account and sync, weekly challenges with a leaderboard, and the AI coach chat.
 import 'package:flutter/material.dart' hide Text;
 import 'cloud.dart';
+import 'health_pages.dart' show activeModes, latestOf;
 import 'i18n.dart';
 import 'logic.dart';
 import 'main.dart' show app;
@@ -444,6 +445,12 @@ Map<String, dynamic> coachContext() {
   c['allergies'] = app.set['allergies'] ?? [];
   c['ramadan'] = app.set['ramadan'] == true;
   c['level'] = '${app.set['level'] ?? 'inter'}';
+  if (app.set['healthOk'] == true) {
+    final modes = activeModes();
+    if (modes.isNotEmpty) c['healthModes'] = modes;
+    if (modes.contains('sugar')) c['lastSugar'] = latestOf('sugar');
+    if (modes.contains('bp')) c['lastBloodPressure'] = latestOf('bp');
+  }
   return c;
 }
 

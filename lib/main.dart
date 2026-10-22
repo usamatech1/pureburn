@@ -61,7 +61,7 @@ class PureBurnApp extends StatelessWidget {
         theme: _theme(Brightness.light),
         darkTheme: _theme(Brightness.dark),
         builder: (context, child) => Directionality(
-          textDirection: app.lang == 'ur' ? TextDirection.rtl : TextDirection.ltr,
+          textDirection: TextDirection.ltr,
           child: child ?? const SizedBox.shrink(),
         ),
         home: Shell(),

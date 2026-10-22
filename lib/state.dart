@@ -12,7 +12,6 @@ class AppState extends ChangeNotifier {
   ThemeMode theme = ThemeMode.system;
   Derived d = Derived();
   SharedPreferences? _sp;
-  String lang = 'en'; // en | ur | rur
   List<Measure> measures = [];
   // Settings kept on this device: reminders, auto steps, app lock.
   Map<String, dynamic> set = {
@@ -43,8 +42,7 @@ class AppState extends ChangeNotifier {
       }
       final sraw = _sp!.getString('pureburn-settings');
       if (sraw != null) set.addAll(jsonDecode(sraw) as Map<String, dynamic>);
-      final lg = _sp!.getString('pureburn-lang');
-      if (lg == 'rur' || lg == 'ur') lang = 'rur';
+
       final t = _sp!.getString('pureburn-theme');
       if (t == 'dark') theme = ThemeMode.dark;
       if (t == 'light') theme = ThemeMode.light;
@@ -55,8 +53,6 @@ class AppState extends ChangeNotifier {
     if (q != null && const ['dashboard', 'profile', 'result', 'bmi', 'dex', 'ddiet', 'explan', 'dietplan', 'progress', 'measure', 'report', 'settings'].contains(q)) {
       mod = q;
     }
-    final ql = Uri.base.queryParameters['lang'];
-    if (ql == 'rur' || ql == 'en') lang = ql!;
     unlocked = !(set['lock'] == true && (set['pinHash'] as String).isNotEmpty) || Uri.base.queryParameters.containsKey('nolock');
     loaded = true;
     notifyListeners();
@@ -67,12 +63,6 @@ class AppState extends ChangeNotifier {
   SharedPreferences? get prefs => _sp;
 
   void refresh() => notifyListeners();
-
-  void setLang(String l) {
-    lang = l;
-    _sp?.setString('pureburn-lang', l);
-    notifyListeners();
-  }
 
   void saveSettings() {
     _sp?.setString('pureburn-settings', jsonEncode(set));
@@ -101,7 +91,6 @@ class AppState extends ChangeNotifier {
         'logs': logs.map((k, v) => MapEntry(k, v.toJson())),
         'weights': weights.map((w) => {'d': w.d, 'kg': w.kg}).toList(),
         'meas': measures.map((m) => m.toJson()).toList(),
-        'lang': lang,
       });
 
   /// Returns null when the text was restored, otherwise a short error message.
@@ -119,8 +108,6 @@ class AppState extends ChangeNotifier {
       logs = nl;
       weights = nw;
       measures = nm;
-      final lg = j['lang'];
-      if (lg == 'rur' || lg == 'en') setLang(lg as String);
       save();
       return null;
     } catch (_) {

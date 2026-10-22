@@ -622,15 +622,6 @@ class _SettingsPageState extends State<SettingsPage> {
   @override
   Widget build(BuildContext context) {
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Box(
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          const H2('Language'),
-          Seg<String>(opts: const [('en', 'English'), ('rur', 'Roman Urdu')], value: app.lang, onChanged: app.setLang),
-          const SizedBox(height: 8),
-          const Muted('Menus, buttons and plans change language. Numbers stay the same.', size: 12),
-        ]),
-      ),
-      _g(16),
       const ServiceSettings(),
       Box(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [

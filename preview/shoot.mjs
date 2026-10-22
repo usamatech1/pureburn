@@ -88,8 +88,6 @@ for (const [name, mod] of screens) {
 }
 try { await shoot('10-dashboard-dark', 'dashboard', true); } catch (e) { console.log('FAILED dark', String(e).slice(0, 400)); }
 try { await shoot('11-dashboard-desktop', 'dashboard', false, 1100, 800); } catch (e) { console.log('FAILED desktop', String(e).slice(0, 400)); }
-try { await shoot('16-dashboard-roman-urdu', 'dashboard', false, 390, 1100, 'rur'); } catch (e) { console.log('FAILED rur', String(e).slice(0, 400)); }
-try { await shoot('18-progress-urdu', 'progress', false, 390, 2400, 'rur'); } catch (e) { console.log('FAILED rur progress', String(e).slice(0, 400)); }
 
 // A short screen recording so the animations can be seen.
 try {

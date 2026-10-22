@@ -59,6 +59,8 @@ async function shoot(name, mod, dark) {
     deviceScaleFactor: 2,
     isMobile: true,
     hasTouch: true,
+    locale: 'en-US',
+    timezoneId: 'Asia/Karachi',
     colorScheme: dark ? 'dark' : 'light',
   });
   await ctx.addInitScript((v) => {

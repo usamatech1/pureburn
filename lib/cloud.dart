@@ -11,7 +11,7 @@ import 'cloud_stub.dart' if (dart.library.html) 'cloud_web.dart';
 const fbApiKey = String.fromEnvironment('FB_API_KEY');
 const fbProject = String.fromEnvironment('FB_PROJECT');
 const _fbRegionRaw = String.fromEnvironment('FB_REGION');
-const coachUrl = String.fromEnvironment('COACH_URL');
+const coachUrl = String.fromEnvironment('COACH_URL', defaultValue: 'https://pureburn-coach.msa-solutions1.workers.dev');
 String get fbRegion => _fbRegionRaw.isEmpty ? 'us-central1' : _fbRegionRaw;
 // The Web client ID is a public identifier (it is visible in every Google sign-in page), so it is safe to keep here.
 const _gEnv = String.fromEnvironment('GOOGLE_CLIENT_ID');

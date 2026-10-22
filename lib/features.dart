@@ -625,7 +625,7 @@ class _SettingsPageState extends State<SettingsPage> {
       Box(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           const H2('Language'),
-          Seg<String>(opts: const [('en', 'English'), ('ur', 'اردو'), ('rur', 'Roman Urdu')], value: app.lang, onChanged: app.setLang),
+          Seg<String>(opts: const [('en', 'English'), ('rur', 'Roman Urdu')], value: app.lang, onChanged: app.setLang),
           const SizedBox(height: 8),
           const Muted('Menus, buttons and plans change language. Numbers stay the same.', size: 12),
         ]),

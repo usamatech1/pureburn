@@ -44,7 +44,7 @@ class AppState extends ChangeNotifier {
       final sraw = _sp!.getString('pureburn-settings');
       if (sraw != null) set.addAll(jsonDecode(sraw) as Map<String, dynamic>);
       final lg = _sp!.getString('pureburn-lang');
-      if (lg == 'ur' || lg == 'rur' || lg == 'en') lang = lg!;
+      if (lg == 'rur' || lg == 'ur') lang = 'rur';
       final t = _sp!.getString('pureburn-theme');
       if (t == 'dark') theme = ThemeMode.dark;
       if (t == 'light') theme = ThemeMode.light;
@@ -56,7 +56,7 @@ class AppState extends ChangeNotifier {
       mod = q;
     }
     final ql = Uri.base.queryParameters['lang'];
-    if (ql == 'ur' || ql == 'rur' || ql == 'en') lang = ql!;
+    if (ql == 'rur' || ql == 'en') lang = ql!;
     unlocked = !(set['lock'] == true && (set['pinHash'] as String).isNotEmpty) || Uri.base.queryParameters.containsKey('nolock');
     loaded = true;
     notifyListeners();
@@ -120,7 +120,7 @@ class AppState extends ChangeNotifier {
       weights = nw;
       measures = nm;
       final lg = j['lang'];
-      if (lg == 'ur' || lg == 'rur' || lg == 'en') setLang(lg as String);
+      if (lg == 'rur' || lg == 'en') setLang(lg as String);
       save();
       return null;
     } catch (_) {

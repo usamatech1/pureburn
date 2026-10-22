@@ -43,7 +43,7 @@ jobs:
         run: flutter pub get
 
       - name: Build web
-        run: flutter build web --release --dart-define=FB_API_KEY=${{ vars.FB_API_KEY }} --dart-define=FB_PROJECT=${{ vars.FB_PROJECT }} --dart-define=FB_REGION=${{ vars.FB_REGION }} --base-href "/${{ github.event.repository.name }}/"
+        run: flutter build web --release --dart-define=FB_API_KEY=${{ vars.FB_API_KEY }} --dart-define=FB_PROJECT=${{ vars.FB_PROJECT }} --dart-define=FB_REGION=${{ vars.FB_REGION }} --dart-define=GOOGLE_CLIENT_ID=${{ vars.GOOGLE_CLIENT_ID }} --base-href "/${{ github.event.repository.name }}/"
 
       - name: Add privacy policy page
         run: cp site/privacy.html build/web/privacy.html

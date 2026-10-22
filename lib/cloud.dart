@@ -3,6 +3,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -10,6 +11,8 @@ const fbApiKey = String.fromEnvironment('FB_API_KEY');
 const fbProject = String.fromEnvironment('FB_PROJECT');
 const _fbRegionRaw = String.fromEnvironment('FB_REGION');
 String get fbRegion => _fbRegionRaw.isEmpty ? 'us-central1' : _fbRegionRaw;
+const googleClientId = String.fromEnvironment('GOOGLE_CLIENT_ID');
+bool get googleReady => cloudConfigured && googleClientId.isNotEmpty;
 bool get cloudConfigured => fbApiKey.isNotEmpty && fbProject.isNotEmpty;
 
 class CloudError implements Exception {
@@ -97,6 +100,24 @@ class CloudService extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> signInGoogle() async {
+    if (!googleReady) throw CloudError('Google sign-in is not set up in this build yet.');
+    try {
+      final g = GoogleSignIn(scopes: const ['email'], clientId: kIsWeb ? googleClientId : null, serverClientId: kIsWeb ? null : googleClientId);
+      final a = await g.signIn();
+      if (a == null) throw CloudError('Google sign-in was cancelled.');
+      final t = await a.authentication;
+      final idt = t.idToken, act = t.accessToken;
+      if ((idt == null || idt.isEmpty) && (act == null || act.isEmpty)) throw CloudError('Google did not return a sign-in token.');
+      final tok = (idt != null && idt.isNotEmpty) ? 'id_token=${Uri.encodeComponent(idt)}' : 'access_token=${Uri.encodeComponent(act!)}';
+      await _auth('signInWithIdp', {'postBody': '$tok&providerId=google.com', 'requestUri': 'http://localhost', 'returnSecureToken': true, 'returnIdpCredential': true});
+    } on CloudError {
+      rethrow;
+    } catch (e) {
+      throw CloudError('Google sign-in failed. Check the setup steps. ($e)');
+    }
+  }
+
   Future<void> signUp(String mail, String pass) => _auth('signUp', {'email': mail.trim(), 'password': pass, 'returnSecureToken': true});
   Future<void> signIn(String mail, String pass) => _auth('signInWithPassword', {'email': mail.trim(), 'password': pass, 'returnSecureToken': true});
 
@@ -111,6 +132,9 @@ class CloudService extends ChangeNotifier {
   }
 
   void signOut() {
+    try {
+      GoogleSignIn().signOut();
+    } catch (_) {}
     uid = email = _idToken = _refresh = '';
     _exp = 0;
     lastSync = 0;

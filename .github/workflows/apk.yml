@@ -66,15 +66,21 @@ jobs:
 
       # The build number goes up on every run, as Google Play requires for each upload.
       - name: Build release APK
-        run: flutter build apk --release --dart-define=FB_API_KEY=${{ vars.FB_API_KEY }} --dart-define=FB_PROJECT=${{ vars.FB_PROJECT }} --dart-define=FB_REGION=${{ vars.FB_REGION }} --build-number=${{ github.run_number }}
+        run: flutter build apk --release --dart-define=FB_API_KEY=${{ vars.FB_API_KEY }} --dart-define=FB_PROJECT=${{ vars.FB_PROJECT }} --dart-define=FB_REGION=${{ vars.FB_REGION }} --dart-define=GOOGLE_CLIENT_ID=${{ vars.GOOGLE_CLIENT_ID }} --build-number=${{ github.run_number }}
 
       - name: Build release App Bundle for Google Play
-        run: flutter build appbundle --release --dart-define=FB_API_KEY=${{ vars.FB_API_KEY }} --dart-define=FB_PROJECT=${{ vars.FB_PROJECT }} --dart-define=FB_REGION=${{ vars.FB_REGION }} --build-number=${{ github.run_number }}
+        run: flutter build appbundle --release --dart-define=FB_API_KEY=${{ vars.FB_API_KEY }} --dart-define=FB_PROJECT=${{ vars.FB_PROJECT }} --dart-define=FB_REGION=${{ vars.FB_REGION }} --dart-define=GOOGLE_CLIENT_ID=${{ vars.GOOGLE_CLIENT_ID }} --build-number=${{ github.run_number }}
 
       - name: Name the files
         run: |
           cp build/app/outputs/flutter-apk/app-release.apk PureBurn.apk
           cp build/app/outputs/bundle/release/app-release.aab PureBurn.aab
+
+      - name: Record the public signing fingerprints (needed for Google sign-in)
+        if: env.ANDROID_KEYSTORE_BASE64 != ''
+        run: |
+          keytool -list -v -keystore android/app/release.jks -storepass "$ANDROID_KEYSTORE_PASSWORD" | grep -E "SHA1|SHA256" > signing-fingerprints.txt || true
+          cat signing-fingerprints.txt
 
       - name: Publish APK and AAB to the latest release
         env:
@@ -82,7 +88,7 @@ jobs:
         run: |
           SHORT=$(echo "${{ github.sha }}" | cut -c1-7)
           gh release delete latest --yes --cleanup-tag || true
-          gh release create latest PureBurn.apk PureBurn.aab \
+          gh release create latest PureBurn.apk PureBurn.aab $( [ -s signing-fingerprints.txt ] && echo signing-fingerprints.txt ) \
             --title "PureBurn (latest)" \
             --notes "Built automatically from commit $SHORT on $(date -u +'%Y-%m-%d %H:%M') UTC, build number ${{ github.run_number }}. PureBurn.apk is for installing on an Android phone. PureBurn.aab is the file for Google Play." \
             --target "${{ github.sha }}" \

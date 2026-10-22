@@ -57,6 +57,17 @@ class _AccountPageState extends State<AccountPage> {
     if (mounted) setState(() => busy = false);
   }
 
+  Future<void> _google() async {
+    setState(() => busy = true);
+    try {
+      await cloud.signInGoogle();
+      if (mounted) _after();
+    } on CloudError catch (e) {
+      if (mounted) _msg(context, e.message);
+    }
+    if (mounted) setState(() => busy = false);
+  }
+
   // After signing in: if the account already holds data, ask which to keep.
   Future<void> _after() async {
     try {
@@ -135,6 +146,19 @@ class _AccountPageState extends State<AccountPage> {
               decoration: InputDecoration(labelText: 'Password', suffixIcon: IconButton(icon: Icon(showPass ? Icons.visibility_off : Icons.visibility), onPressed: () => setState(() => showPass = !showPass))),
             ),
             _gap(14),
+            if (googleReady) ...[
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: busy ? null : _google,
+                  icon: const Icon(Icons.account_circle_outlined),
+                  label: const Text('Continue with Google'),
+                ),
+              ),
+              _gap(10),
+              const Center(child: Muted('or use your email', size: 12)),
+              _gap(10),
+            ],
             Wrap(spacing: 10, runSpacing: 10, children: [
               FilledButton(onPressed: busy ? null : () => _go(false), child: Text(busy ? 'Please wait' : 'Sign in')),
               OutlinedButton(onPressed: busy ? null : () => _go(true), child: const Text('Create account')),

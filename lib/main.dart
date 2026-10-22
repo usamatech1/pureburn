@@ -1,4 +1,5 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Text;
+import 'i18n.dart';
 import 'state.dart';
 import 'ui.dart';
 import 'pages.dart';
@@ -55,6 +56,10 @@ class PureBurnApp extends StatelessWidget {
         themeMode: app.theme,
         theme: _theme(Brightness.light),
         darkTheme: _theme(Brightness.dark),
+        builder: (context, child) => Directionality(
+          textDirection: app.lang == 'ur' ? TextDirection.rtl : TextDirection.ltr,
+          child: child ?? const SizedBox.shrink(),
+        ),
         home: Shell(),
       ),
     );
@@ -78,6 +83,9 @@ const mods = [
   ModDef('explan', 'Exercise plan', 'Weekly plan', Icons.calendar_month_outlined, 'Plans'),
   ModDef('dietplan', 'Diet plan', 'Meal plan', Icons.list_alt_outlined),
   ModDef('progress', 'Progress', 'Tracking', Icons.show_chart, 'Tracking'),
+  ModDef('measure', 'Measurements', 'Your body', Icons.straighten),
+  ModDef('report', 'Weekly report', 'Share', Icons.ios_share_outlined),
+  ModDef('settings', 'Settings', 'More', Icons.tune, 'More'),
 ];
 
 class Shell extends StatelessWidget {
@@ -89,7 +97,7 @@ class Shell extends StatelessWidget {
     return Container(
       width: 268,
       padding: const EdgeInsets.fromLTRB(14, 22, 14, 14),
-      decoration: BoxDecoration(color: card(context), border: Border(right: BorderSide(color: line(context)))),
+      decoration: BoxDecoration(color: card(context), border: BorderDirectional(end: BorderSide(color: line(context)))),
       child: SafeArea(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Padding(

@@ -1,4 +1,5 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Text;
+import 'i18n.dart';
 
 Color fg(BuildContext c) => Theme.of(c).colorScheme.onSurface;
 Color muted(BuildContext c) => Theme.of(c).brightness == Brightness.dark ? const Color(0xFF8D8D8D) : const Color(0xFF6E6E6E);
@@ -31,7 +32,7 @@ class Eyebrow extends StatelessWidget {
   final bool onDark;
   const Eyebrow(this.t, {super.key, this.onDark = false});
   @override
-  Widget build(BuildContext context) => Text(t.toUpperCase(),
+  Widget build(BuildContext context) => Text(tr(t).toUpperCase(),
       style: TextStyle(fontSize: 10.5, letterSpacing: 1.6, fontWeight: FontWeight.w500, color: onDark ? const Color(0xFFA6A6A6) : muted(context)));
 }
 

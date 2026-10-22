@@ -1,7 +1,9 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Text;
+import 'i18n.dart';
 import 'package:flutter/services.dart';
 import 'logic.dart';
 import 'main.dart' show app;
+import 'features.dart';
 import 'ui.dart';
 
 class ModuleView extends StatelessWidget {
@@ -12,6 +14,7 @@ class ModuleView extends StatelessWidget {
   Widget build(BuildContext context) {
     final d = app.d;
     if (id == 'profile') return ProfilePage();
+    if (id == 'settings') return const SettingsPage();
     if (id == 'result' && d.ok) return const ResultPage();
     if (!d.ok) {
       return Box(
@@ -35,6 +38,10 @@ class ModuleView extends StatelessWidget {
         return DietPlanPage();
       case 'progress':
         return ProgressPage();
+      case 'measure':
+        return const MeasurePage();
+      case 'report':
+        return const ReportPage();
       default:
         return DashboardPage();
     }
@@ -947,6 +954,8 @@ class _ProgressPageState extends State<ProgressPage> {
       Box(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [const H2('Weight over time'), WeightChart()])),
       _gap(),
       _progressWeek(context),
+      _gap(),
+      const TrendsBox(),
       _gap(),
       Box(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [

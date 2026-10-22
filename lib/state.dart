@@ -12,6 +12,18 @@ class AppState extends ChangeNotifier {
   ThemeMode theme = ThemeMode.system;
   Derived d = Derived();
   SharedPreferences? _sp;
+  String lang = 'en'; // en | ur | rur
+  List<Measure> measures = [];
+  // Settings kept on this device: reminders, auto steps, app lock.
+  Map<String, dynamic> set = {
+    'water': false, 'waterEvery': 2,
+    'wk': false, 'wkH': 18, 'wkM': 0,
+    'meals': false,
+    'autoSteps': false,
+    'lock': false, 'pinHash': '', 'bio': false,
+  };
+  bool unlocked = false;
+  String lockNote = '';
 
   AppState() {
     d = derive(p);
@@ -27,7 +39,12 @@ class AppState extends ChangeNotifier {
         logs = {};
         ((j['logs'] ?? {}) as Map<String, dynamic>).forEach((k, v) => logs[k] = DayLog.fromJson(v as Map<String, dynamic>));
         weights = ((j['weights'] ?? []) as List).map((e) => WeightEntry(e['d'] as String, (e['kg'] as num).toDouble())).toList();
+        measures = ((j['meas'] ?? []) as List).map((e) => Measure.fromJson(e as Map<String, dynamic>)).toList();
       }
+      final sraw = _sp!.getString('pureburn-settings');
+      if (sraw != null) set.addAll(jsonDecode(sraw) as Map<String, dynamic>);
+      final lg = _sp!.getString('pureburn-lang');
+      if (lg == 'ur' || lg == 'rur' || lg == 'en') lang = lg!;
       final t = _sp!.getString('pureburn-theme');
       if (t == 'dark') theme = ThemeMode.dark;
       if (t == 'light') theme = ThemeMode.light;
@@ -35,10 +52,105 @@ class AppState extends ChangeNotifier {
     d = derive(p);
     // Deep link for the web version, for example ?mod=progress opens the Progress section.
     final q = Uri.base.queryParameters['mod'];
-    if (q != null && const ['dashboard', 'profile', 'result', 'bmi', 'dex', 'ddiet', 'explan', 'dietplan', 'progress'].contains(q)) {
+    if (q != null && const ['dashboard', 'profile', 'result', 'bmi', 'dex', 'ddiet', 'explan', 'dietplan', 'progress', 'measure', 'report', 'settings'].contains(q)) {
       mod = q;
     }
+    final ql = Uri.base.queryParameters['lang'];
+    if (ql == 'ur' || ql == 'rur' || ql == 'en') lang = ql!;
+    unlocked = !(set['lock'] == true && (set['pinHash'] as String).isNotEmpty) || Uri.base.queryParameters.containsKey('nolock');
+    loaded = true;
     notifyListeners();
+  }
+
+  bool loaded = false;
+
+  void setLang(String l) {
+    lang = l;
+    _sp?.setString('pureburn-lang', l);
+    notifyListeners();
+  }
+
+  void saveSettings() {
+    _sp?.setString('pureburn-settings', jsonEncode(set));
+    notifyListeners();
+  }
+
+  // ---- measurements ----
+  void addMeasure(Measure m) {
+    measures.removeWhere((x) => x.d == m.d);
+    measures.add(m);
+    measures.sort((a, b) => a.d.compareTo(b.d));
+    save();
+  }
+
+  void delMeasure(String date) {
+    measures.removeWhere((x) => x.d == date);
+    save();
+  }
+
+  // ---- backup ----
+  String exportJson() => jsonEncode({
+        'app': 'pureburn',
+        'v': 1,
+        'saved': isoDate(DateTime.now()),
+        'p': p.toJson(),
+        'logs': logs.map((k, v) => MapEntry(k, v.toJson())),
+        'weights': weights.map((w) => {'d': w.d, 'kg': w.kg}).toList(),
+        'meas': measures.map((m) => m.toJson()).toList(),
+        'lang': lang,
+      });
+
+  /// Returns null when the text was restored, otherwise a short error message.
+  String? importJson(String text) {
+    try {
+      final j = jsonDecode(text.trim());
+      if (j is! Map || j['app'] != 'pureburn') return 'This is not a PureBurn backup.';
+      final np = Profile();
+      np.fromJson((j['p'] ?? {}) as Map<String, dynamic>);
+      final nl = <String, DayLog>{};
+      ((j['logs'] ?? {}) as Map<String, dynamic>).forEach((k, v) => nl[k] = DayLog.fromJson(v as Map<String, dynamic>));
+      final nw = ((j['weights'] ?? []) as List).map((e) => WeightEntry(e['d'] as String, (e['kg'] as num).toDouble())).toList();
+      final nm = ((j['meas'] ?? []) as List).map((e) => Measure.fromJson(e as Map<String, dynamic>)).toList();
+      p = np;
+      logs = nl;
+      weights = nw;
+      measures = nm;
+      final lg = j['lang'];
+      if (lg == 'ur' || lg == 'rur' || lg == 'en') setLang(lg as String);
+      save();
+      return null;
+    } catch (_) {
+      return 'The backup text could not be read.';
+    }
+  }
+
+  // ---- badges ----
+  List<Achv> badges() {
+    var tasksDone = 0, bestScore = 0.0, waterDays = 0, maxSteps = 0, perfect = 0;
+    logs.forEach((k, v) {
+      if (v.ex.isNotEmpty || v.meal.isNotEmpty) tasksDone++;
+      if (v.steps > maxSteps) maxSteps = v.steps;
+      final i = dayInfo(k);
+      if (i.score > bestScore) bestScore = i.score;
+      if (d.ok && i.water >= i.wg && i.wg > 0) waterDays++;
+      if (i.total > 0 && i.score >= 0.999) perfect++;
+    });
+    final st = streak();
+    var lost = 0.0;
+    if (weights.length >= 2) lost = weights.first.kg - weights.last.kg;
+    return [
+      Achv('start', 'First step', 'Tick your first task', Icons.flag_outlined, tasksDone >= 1),
+      Achv('s3', '3-day streak', 'Three good days in a row', Icons.local_fire_department_outlined, st >= 3),
+      Achv('s7', '7-day streak', 'A full week of good days', Icons.whatshot_outlined, st >= 7),
+      Achv('s30', '30-day streak', 'A whole month. Wow', Icons.workspace_premium_outlined, st >= 30),
+      Achv('perfect', 'Perfect day', 'Finish every task in one day', Icons.check_circle_outline, perfect >= 1),
+      Achv('water', 'Water hero', 'Meet your water goal on 5 days', Icons.water_drop_outlined, waterDays >= 5),
+      Achv('steps', '10,000 steps', 'Walk 10,000 steps in a day', Icons.directions_walk, maxSteps >= 10000),
+      Achv('w5', 'Weight tracker', 'Log your weight 5 times', Icons.monitor_weight_outlined, weights.length >= 5),
+      Achv('m1', 'Tape measure', 'Log your first measurements', Icons.straighten, measures.isNotEmpty),
+      Achv('l1', 'First kilo', 'Lose 1 kg from your first entry', Icons.trending_down, lost >= 1),
+      Achv('l5', 'Five kilos', 'Lose 5 kg from your first entry', Icons.emoji_events_outlined, lost >= 5),
+    ];
   }
 
   void save() {
@@ -53,6 +165,7 @@ class AppState extends ChangeNotifier {
             'p': p.toJson(),
             'logs': logs.map((k, v) => MapEntry(k, v.toJson())),
             'weights': weights.map((w) => {'d': w.d, 'kg': w.kg}).toList(),
+            'meas': measures.map((m) => m.toJson()).toList(),
           }));
     }
     notifyListeners();
@@ -200,4 +313,20 @@ class AppState extends ChangeNotifier {
 class DayInfo {
   int exT = 0, exD = 0, mT = 0, mD = 0, water = 0, wg = 8, kcal = 0, steps = 0, total = 0, done = 0;
   double cost = 0, score = 0;
+}
+
+class Measure {
+  final String d;
+  final double waist, chest, hip; // cm, 0 means not measured
+  Measure(this.d, {this.waist = 0, this.chest = 0, this.hip = 0});
+  Map<String, dynamic> toJson() => {'d': d, 'waist': waist, 'chest': chest, 'hip': hip};
+  static Measure fromJson(Map<String, dynamic> j) => Measure(j['d'] as String,
+      waist: ((j['waist'] ?? 0) as num).toDouble(), chest: ((j['chest'] ?? 0) as num).toDouble(), hip: ((j['hip'] ?? 0) as num).toDouble());
+}
+
+class Achv {
+  final String id, title, desc;
+  final IconData icon;
+  final bool earned;
+  Achv(this.id, this.title, this.desc, this.icon, this.earned);
 }

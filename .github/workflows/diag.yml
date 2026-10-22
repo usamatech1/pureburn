@@ -1,0 +1,27 @@
+name: Diagnose dependencies
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  diag:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: Resolve packages and keep the log
+        run: |
+          mkdir -p out
+          flutter --version > out/diag.txt 2>&1 || true
+          flutter create . --platforms=web --project-name pureburn >> out/diag.txt 2>&1 || true
+          flutter pub get >> out/diag.txt 2>&1 || true
+          tail -n 60 out/diag.txt
+      - name: Publish the log
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release delete diag --yes --cleanup-tag || true
+          gh release create diag out/diag.txt --title "diag" --notes "dependency log" --prerelease --latest=false --target "${{ github.sha }}"

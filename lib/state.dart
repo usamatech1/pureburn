@@ -2,6 +2,8 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'logic.dart';
+import 'foods.dart';
+import 'dietfit.dart';
 
 class AppState extends ChangeNotifier {
   Profile p = Profile();
@@ -20,12 +22,23 @@ class AppState extends ChangeNotifier {
     'meals': false,
     'autoSteps': false,
     'lock': false, 'pinHash': '', 'bio': false,
+    'dietType': 'any', 'allergies': <String>[],
+    'ramadan': false, 'sehri': '04:30', 'iftar': '18:30',
   };
+  Map<String, List<FoodEntry>> food = {}; // food diary by date
+  List<Food> customFoods = [];
+  Map<String, String> swaps = {}; // meal id -> template id
+  Set<String> shopDone = {};
   bool unlocked = false;
   String lockNote = '';
 
   AppState() {
+    _rebuild();
+  }
+
+  void _rebuild() {
     d = derive(p);
+    if (d.ok && d.diet != null) applyPrefs(d, set, swaps, customFoods, p.budget);
   }
 
   Future<void> load() async {
@@ -39,18 +52,26 @@ class AppState extends ChangeNotifier {
         ((j['logs'] ?? {}) as Map<String, dynamic>).forEach((k, v) => logs[k] = DayLog.fromJson(v as Map<String, dynamic>));
         weights = ((j['weights'] ?? []) as List).map((e) => WeightEntry(e['d'] as String, (e['kg'] as num).toDouble())).toList();
         measures = ((j['meas'] ?? []) as List).map((e) => Measure.fromJson(e as Map<String, dynamic>)).toList();
+        food = {};
+        ((j['food'] ?? {}) as Map<String, dynamic>).forEach((k, v) => food[k] = [for (final e in v as List) FoodEntry.fromJson(e as Map<String, dynamic>)]);
+        customFoods = [for (final e in (j['cfoods'] ?? []) as List) Food.fromJson(e as Map<String, dynamic>)];
+        swaps = {for (final e in ((j['swaps'] ?? {}) as Map<String, dynamic>).entries) e.key: '${e.value}'};
+        shopDone = {for (final e in (j['shop'] ?? []) as List) '$e'};
       }
       final sraw = _sp!.getString('pureburn-settings');
-      if (sraw != null) set.addAll(jsonDecode(sraw) as Map<String, dynamic>);
+      if (sraw != null) {
+        set.addAll(jsonDecode(sraw) as Map<String, dynamic>);
+        set['allergies'] = [for (final a in (set['allergies'] ?? const []) as List) '$a'];
+      }
 
       final t = _sp!.getString('pureburn-theme');
       if (t == 'dark') theme = ThemeMode.dark;
       if (t == 'light') theme = ThemeMode.light;
     } catch (_) {}
-    d = derive(p);
+    _rebuild();
     // Deep link for the web version, for example ?mod=progress opens the Progress section.
     final q = Uri.base.queryParameters['mod'];
-    if (q != null && const ['dashboard', 'profile', 'result', 'bmi', 'dex', 'ddiet', 'explan', 'dietplan', 'progress', 'measure', 'report', 'settings'].contains(q)) {
+    if (q != null && const ['dashboard', 'profile', 'result', 'bmi', 'dex', 'ddiet', 'explan', 'dietplan', 'progress', 'measure', 'report', 'settings', 'foods', 'shop', 'workout', 'sleep'].contains(q)) {
       mod = q;
     }
     unlocked = !(set['lock'] == true && (set['pinHash'] as String).isNotEmpty) || Uri.base.queryParameters.containsKey('nolock');
@@ -59,6 +80,8 @@ class AppState extends ChangeNotifier {
   }
 
   bool loaded = false;
+
+  static const prefKeys = ['dietType', 'allergies', 'ramadan', 'sehri', 'iftar'];
 
   SharedPreferences? get prefs => _sp;
 
@@ -82,6 +105,44 @@ class AppState extends ChangeNotifier {
     save();
   }
 
+  // ---- food diary ----
+  void addFood(String date, FoodEntry e) {
+    food.putIfAbsent(date, () => []).add(e);
+    save();
+  }
+
+  void removeFood(String date, int i) {
+    final l = food[date];
+    if (l == null || i < 0 || i >= l.length) return;
+    l.removeAt(i);
+    save();
+  }
+
+  void addCustomFood(Food f) {
+    customFoods.add(f);
+    save();
+  }
+
+  void removeCustomFood(String id) {
+    customFoods.removeWhere((f) => f.id == id);
+    save();
+  }
+
+  void setSwap(String mealId, String? tmplId) {
+    if (tmplId == null) {
+      swaps.remove(mealId);
+    } else {
+      swaps[mealId] = tmplId;
+    }
+    save();
+  }
+
+  void setPref(String k, Object? v) {
+    set[k] = v;
+    saveSettings();
+    save();
+  }
+
   // ---- backup ----
   String exportJson() => jsonEncode({
         'app': 'pureburn',
@@ -91,6 +152,10 @@ class AppState extends ChangeNotifier {
         'logs': logs.map((k, v) => MapEntry(k, v.toJson())),
         'weights': weights.map((w) => {'d': w.d, 'kg': w.kg}).toList(),
         'meas': measures.map((m) => m.toJson()).toList(),
+        'food': food.map((k, v) => MapEntry(k, v.map((e) => e.toJson()).toList())),
+        'cfoods': customFoods.map((f) => f.toJson()).toList(),
+        'swaps': swaps,
+        'prefs': {for (final k in prefKeys) k: set[k]},
       });
 
   /// Returns null when the text was restored, otherwise a short error message.
@@ -104,6 +169,19 @@ class AppState extends ChangeNotifier {
       ((j['logs'] ?? {}) as Map<String, dynamic>).forEach((k, v) => nl[k] = DayLog.fromJson(v as Map<String, dynamic>));
       final nw = ((j['weights'] ?? []) as List).map((e) => WeightEntry(e['d'] as String, (e['kg'] as num).toDouble())).toList();
       final nm = ((j['meas'] ?? []) as List).map((e) => Measure.fromJson(e as Map<String, dynamic>)).toList();
+      final nf = <String, List<FoodEntry>>{};
+      ((j['food'] ?? {}) as Map<String, dynamic>).forEach((k, v) => nf[k] = [for (final e in v as List) FoodEntry.fromJson(e as Map<String, dynamic>)]);
+      customFoods = [for (final e in (j['cfoods'] ?? []) as List) Food.fromJson(e as Map<String, dynamic>)];
+      swaps = {for (final e in ((j['swaps'] ?? {}) as Map<String, dynamic>).entries) e.key: '${e.value}'};
+      food = nf;
+      final pr = j['prefs'];
+      if (pr is Map) {
+        for (final k in prefKeys) {
+          if (pr[k] != null) set[k] = pr[k];
+        }
+        set['allergies'] = [for (final a in (set['allergies'] ?? const []) as List) '$a'];
+        saveSettings();
+      }
       p = np;
       logs = nl;
       weights = nw;
@@ -147,7 +225,8 @@ class AppState extends ChangeNotifier {
   void save() {
     final cutoff = isoDate(DateTime.now().subtract(const Duration(days: 120)));
     logs.removeWhere((k, _) => k.compareTo(cutoff) < 0);
-    d = derive(p);
+    food.removeWhere((k, _) => k.compareTo(cutoff) < 0);
+    _rebuild();
     final sp = _sp;
     if (sp != null) {
       sp.setString(
@@ -157,6 +236,10 @@ class AppState extends ChangeNotifier {
             'logs': logs.map((k, v) => MapEntry(k, v.toJson())),
             'weights': weights.map((w) => {'d': w.d, 'kg': w.kg}).toList(),
             'meas': measures.map((m) => m.toJson()).toList(),
+            'food': food.map((k, v) => MapEntry(k, v.map((e) => e.toJson()).toList())),
+            'cfoods': customFoods.map((f) => f.toJson()).toList(),
+            'swaps': swaps,
+            'shop': shopDone.toList(),
           }));
     }
     notifyListeners();
@@ -212,8 +295,22 @@ class AppState extends ChangeNotifier {
           i.mD++;
           i.kcal += m.kcal;
           i.cost += m.cost;
+          i.p += m.mp;
+          i.c += m.mc;
+          i.f += m.mf;
         }
       }
+    }
+    for (final e in food[date] ?? const <FoodEntry>[]) {
+      final fd = findFood(e.id, customFoods);
+      if (fd == null) continue;
+      final k = (fd.kcal * e.servings).round();
+      i.kcal += k;
+      i.dK += k;
+      i.p += fd.p * e.servings;
+      i.c += fd.c * e.servings;
+      i.f += fd.f * e.servings;
+      i.cost += fd.price * e.servings;
     }
     i.total = i.exT + i.mT + 1;
     i.done = i.exD + i.mD + (i.water >= wg ? 1 : 0);
@@ -302,8 +399,8 @@ class AppState extends ChangeNotifier {
 }
 
 class DayInfo {
-  int exT = 0, exD = 0, mT = 0, mD = 0, water = 0, wg = 8, kcal = 0, steps = 0, total = 0, done = 0;
-  double cost = 0, score = 0;
+  int exT = 0, exD = 0, mT = 0, mD = 0, water = 0, wg = 8, kcal = 0, steps = 0, total = 0, done = 0, dK = 0;
+  double cost = 0, score = 0, p = 0, c = 0, f = 0;
 }
 
 class Measure {
@@ -320,4 +417,12 @@ class Achv {
   final IconData icon;
   final bool earned;
   Achv(this.id, this.title, this.desc, this.icon, this.earned);
+}
+
+class FoodEntry {
+  final String id, slot;
+  final double servings;
+  FoodEntry(this.id, this.servings, this.slot);
+  Map<String, dynamic> toJson() => {'id': id, 's': servings, 'slot': slot};
+  static FoodEntry fromJson(Map<String, dynamic> j) => FoodEntry(j['id'] as String, ((j['s'] ?? 1) as num).toDouble(), (j['slot'] ?? 'Snack') as String);
 }

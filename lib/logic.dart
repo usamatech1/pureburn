@@ -232,9 +232,12 @@ class Plan {
 
 class Meal {
   final String id, time, name;
-  final double cost;
+  double cost;
   int kcal = 0;
-  final List<String> items;
+  List<String> items;
+  List<(String, double)>? parts; // foods and portions, when the meal was swapped or filtered
+  String? tmpl; // template id when swapped
+  double mp = 0, mc = 0, mf = 0; // estimated protein, carbs and fat in grams
   Meal(this.id, this.time, this.name, this.cost, this.items);
 }
 

@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'logic.dart';
 import 'main.dart' show app;
 import 'features.dart';
+import 'nutrition_pages.dart';
 import 'services.dart';
 import 'ui.dart';
 
@@ -39,6 +40,10 @@ class ModuleView extends StatelessWidget {
         return DietPlanPage();
       case 'progress':
         return ProgressPage();
+      case 'foods':
+        return const FoodDiaryPage();
+      case 'shop':
+        return const ShoppingPage();
       case 'measure':
         return const MeasurePage();
       case 'report':
@@ -721,6 +726,7 @@ class DdietPage extends StatelessWidget {
                 Muted(m.time, size: 12),
                 const SizedBox(height: 4),
                 Bullets(m.items),
+                Align(alignment: AlignmentDirectional.centerStart, child: TextButton.icon(onPressed: () => showSwapSheet(context, m), icon: const Icon(Icons.swap_horiz, size: 18), label: const Text('Swap'))),
               ]),
               trailing: Column(crossAxisAlignment: CrossAxisAlignment.end, children: [Pill('~${m.kcal} kcal'), const SizedBox(height: 6), Pill(rs(m.cost, 5))]),
             ),
@@ -845,7 +851,7 @@ class DietPlanPage extends StatelessWidget {
       if (d.gNote.isNotEmpty) ...[Box(child: Text(d.gNote)), _gap()],
       Pill('${p.headV} · ${p.timeTxt} · ${p.kcal} kcal a day'),
       _gap(),
-      Box(child: _budget()),
+      const DietPrefsBox(),
       _gap(),
       _grid([
         Stat('Food cost', '${rs(df.daily, 5)} / day', s: 'About ${rs(df.daily * 30, 100)} a month', inverse: true),
@@ -865,6 +871,7 @@ class DietPlanPage extends StatelessWidget {
                 Muted(m.time, size: 12),
                 const SizedBox(height: 6),
                 Bullets(m.items),
+                Align(alignment: AlignmentDirectional.centerStart, child: TextButton.icon(onPressed: () => showSwapSheet(context, m), icon: const Icon(Icons.swap_horiz, size: 18), label: const Text('Swap'))),
               ]),
             ),
         ]),

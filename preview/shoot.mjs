@@ -36,6 +36,7 @@ const state = {
   p: { unit: 'metric', sex: 'm', age: 32, act: 'light', heightCm: 172, weightKg: 84.5, std: 'asia', goal: 'lose', targetKg: 74, pace: 'steady', days: 4, place: 'home', budget: 'std' },
   logs,
   weights,
+  food: { [iso(today)]: [{ id: 'chai', s: 2, slot: 'Breakfast' }, { id: 'biryani', s: 1, slot: 'Lunch' }, { id: 'almonds', s: 1, slot: 'Snack' }] },
   meas: [0, 1, 2, 3].map((k) => ({ d: iso(addDays(today, -(3 - k) * 10)), waist: 98 - k * 1.8, chest: 104 - k * 0.6, hip: 106 - k * 0.8 })),
 };
 // shared_preferences on the web keeps strings as JSON inside localStorage with a "flutter." prefix.
@@ -54,10 +55,12 @@ const screens = [
   ['12-measurements', 'measure'],
   ['13-weekly-report', 'report'],
   ['14-settings', 'settings'],
+  ['19-food-diary', 'foods'],
+  ['20-shopping-list', 'shop'],
 ];
 
 const browser = await chromium.launch({ args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--no-sandbox'] });
-async function shoot(name, mod, dark, w = 390, h = 1500, lang = '') {
+async function shoot(name, mod, dark, w = 390, h = 1500, settings = null) {
   const ctx = await browser.newContext({
     viewport: { width: w, height: h },
     deviceScaleFactor: w > 600 ? 1 : 2,
@@ -68,13 +71,13 @@ async function shoot(name, mod, dark, w = 390, h = 1500, lang = '') {
     colorScheme: dark ? 'dark' : 'light',
   });
   await ctx.addInitScript((v) => {
-    try { localStorage.setItem('flutter.pureburn-state-v1', v); } catch (e) {}
-  }, stored);
+    try { localStorage.setItem('flutter.pureburn-state-v1', v[0]); if (v[1]) localStorage.setItem('flutter.pureburn-settings', v[1]); } catch (e) {}
+  }, [stored, settings ? JSON.stringify(JSON.stringify(settings)) : '']);
   const page = await ctx.newPage();
   page.on('pageerror', (e) => console.log('pageerror', name, e.message));
   page.on('console', (m) => { if (m.type() === 'error') console.log('console.error', name, m.text().slice(0, 300)); });
   page.on('requestfailed', (r) => console.log('requestfailed', name, r.url().slice(0, 150), r.failure()?.errorText));
-  await page.goto(`${BASE}?mod=${mod}${lang ? '&lang=' + lang : ''}`, { waitUntil: 'domcontentloaded', timeout: 20000 });
+  await page.goto(`${BASE}?mod=${mod}`, { waitUntil: 'domcontentloaded', timeout: 20000 });
   await page.waitForSelector('flt-glass-pane', { timeout: 25000, state: 'attached' });
   await page.waitForTimeout(5000);
   console.log('rendered', name, await page.evaluate(() => document.querySelectorAll('flt-glass-pane, canvas').length));
@@ -87,6 +90,7 @@ for (const [name, mod] of screens) {
   try { await shoot(name, mod, false, 390, mod === 'progress' ? 2600 : 1500); } catch (e) { console.log('FAILED', name, String(e).slice(0, 400)); }
 }
 try { await shoot('10-dashboard-dark', 'dashboard', true); } catch (e) { console.log('FAILED dark', String(e).slice(0, 400)); }
+try { await shoot('21-diet-plan-vegetarian-ramadan', 'dietplan', false, 390, 2800, { dietType: 'veg', allergies: ['dairy'], ramadan: true, sehri: '04:30', iftar: '18:30' }); } catch (e) { console.log('FAILED ramadan', String(e).slice(0, 400)); }
 try { await shoot('11-dashboard-desktop', 'dashboard', false, 1100, 800); } catch (e) { console.log('FAILED desktop', String(e).slice(0, 400)); }
 
 // A short screen recording so the animations can be seen.

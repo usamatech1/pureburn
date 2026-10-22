@@ -36,6 +36,9 @@ jobs:
           sed -i 's#apple-mobile-web-app-title" content="[^"]*"#apple-mobile-web-app-title" content="PureBurn"#' web/index.html
           sed -i 's#"name": "[^"]*"#"name": "PureBurn"#; s#"short_name": "[^"]*"#"short_name": "PureBurn"#; s#"description": "[^"]*"#"description": "BMI, goals, daily exercise and Pakistani diet plans."#; s#"background_color": "[^"]*"#"background_color": "\#000000"#; s#"theme_color": "[^"]*"#"theme_color": "\#000000"#' web/manifest.json
 
+      - name: Add the PureBurn splash screen
+        run: python3 .github/scripts/brand_web.py
+
       - name: Get packages
         run: flutter pub get
 

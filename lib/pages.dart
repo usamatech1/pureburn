@@ -109,66 +109,156 @@ class WeekStrip extends StatelessWidget {
 }
 
 // ---------------- dashboard ----------------
-// The dashboard is only a light summary of today. Full records live in each section.
+// A short, branded summary of today. Full records live in each section.
+class _Tk {
+  final bool done;
+  final String title, sub, to;
+  const _Tk(this.done, this.title, this.sub, this.to);
+}
+
 class DashboardPage extends StatelessWidget {
   const DashboardPage({super.key});
   @override
   Widget build(BuildContext context) {
     final d = app.d;
-    final today = isoDate(DateTime.now());
+    final now = DateTime.now();
+    final today = isoDate(now);
     final info = app.dayInfo(today);
-    final last = app.weights.isEmpty ? app.p.weightKg : app.weights.last.kg;
     final st = app.streak();
     final L = app.logs[today];
     final row = app.rowFor(today);
     final kcalFrac = (d.plan != null && d.plan!.kcal > 0) ? info.kcal / d.plan!.kcal : 0.0;
-    final ups = <Widget>[];
-    Widget up(bool done, String title, String sub, String to) => Padding(
-          padding: const EdgeInsets.only(bottom: 8),
-          child: InkWell(
-            borderRadius: BorderRadius.circular(14),
-            onTap: () => app.go(to),
-            child: Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(border: Border.all(color: line(context)), borderRadius: BorderRadius.circular(14)),
-              child: Row(children: [
-                Pill(done ? 'Done' : 'Pending'),
-                const SizedBox(width: 12),
-                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
-                  if (sub.isNotEmpty) Muted(sub, size: 12),
-                ])),
-              ]),
-            ),
-          ),
-        );
+
+    final items = <_Tk>[];
     if (d.plan != null) {
       if (row != null) {
         final n = sessionTasks(row).tasks.length;
-        ups.add(up(info.exD == n, 'Workout: ${row.name}', '${info.exD} of $n tasks done', 'dex'));
+        items.add(_Tk(info.exD == n, 'Workout: ${row.name}', '${info.exD} of $n tasks done', 'dex'));
       } else {
-        ups.add(up(true, 'Rest day', 'No workout scheduled today', 'dex'));
+        items.add(const _Tk(true, 'Rest day', 'No workout scheduled today', 'dex'));
       }
       for (final m in d.diet!.meals) {
-        ups.add(up(L != null && L.meal.contains(m.id), m.name, '${m.time} · ~${m.kcal} kcal', 'ddiet'));
+        items.add(_Tk(L != null && L.meal.contains(m.id), m.name, '${m.time} · ~${m.kcal} kcal', 'ddiet'));
       }
     }
-    ups.add(up(info.water >= info.wg, 'Water', '${info.water} of ${info.wg} glasses', 'ddiet'));
-    ups.add(up(info.steps >= d.stepGoal, 'Steps', '${info.steps} of ${d.stepGoal}', 'dex'));
+    items.add(_Tk(info.water >= info.wg, 'Water', '${info.water} of ${info.wg} glasses', 'ddiet'));
+    items.add(_Tk(info.steps >= d.stepGoal, 'Steps', '${info.steps} of ${d.stepGoal}', 'dex'));
+
+    final greet = now.hour < 12 ? 'Good morning' : now.hour < 17 ? 'Good afternoon' : 'Good evening';
+    final left = info.total - info.done;
+    final msg = info.total == 0
+        ? 'Fill in your profile to get started.'
+        : left <= 0
+            ? 'Everything is done for today. Well played.'
+            : '$left of ${info.total} tasks left today.';
+    Widget chip(String t) => Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+          decoration: BoxDecoration(border: Border.all(color: const Color(0xFF3A3A3A)), borderRadius: BorderRadius.circular(99)),
+          child: Text(t, style: const TextStyle(fontSize: 11.5, color: Color(0xFFD0D0D0))),
+        );
+    final hero = Box(
+      dark: true,
+      padding: const EdgeInsets.all(22),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          const BrandLockup(height: 22, color: Colors.white),
+          const Spacer(),
+          Text('${dayName(now).toUpperCase()} · ${now.day}/${now.month}', style: const TextStyle(fontSize: 10.5, letterSpacing: 1.4, color: Color(0xFFA6A6A6))),
+        ]),
+        const SizedBox(height: 22),
+        Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(greet, style: const TextStyle(fontSize: 27, fontWeight: FontWeight.w300, letterSpacing: -0.8, height: 1.1)),
+              const SizedBox(height: 6),
+              Text(msg, style: const TextStyle(color: Color(0xFFA6A6A6), height: 1.35, fontSize: 13.5)),
+              const SizedBox(height: 14),
+              Wrap(spacing: 8, runSpacing: 8, children: [
+                chip('Streak $st ${st == 1 ? 'day' : 'days'}'),
+                chip('BMI ${d.bmi.toStringAsFixed(1)} · ${d.cat}'),
+                if (d.plan != null) chip(d.plan!.headV),
+              ]),
+            ]),
+          ),
+          const SizedBox(width: 14),
+          RingGauge(fraction: info.score, center: '${(info.score * 100).round()}%', size: 96, ink: Colors.white, track: const Color(0xFF2A2A2A)),
+        ]),
+      ]),
+    );
+
+    Widget nav(IconData icon, String t, String to) => InkWell(
+          borderRadius: BorderRadius.circular(99),
+          onTap: () => app.go(to),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+            decoration: BoxDecoration(border: Border.all(color: line(context)), borderRadius: BorderRadius.circular(99), color: card(context)),
+            child: Row(mainAxisSize: MainAxisSize.min, children: [Icon(icon, size: 16), const SizedBox(width: 8), Text(t, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500))]),
+          ),
+        );
 
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      hero,
+      _gap(12),
       _grid([
-        _ringTile(context, 'Workout today', info.exT > 0 ? info.exD / info.exT : 0.0, info.exT > 0 ? '${info.exD}/${info.exT}' : 'Rest', info.exT > 0 ? 'Tasks done' : 'No session today', 'dex'),
-        _ringTile(context, 'Calories eaten', kcalFrac, '${(kcalFrac * 100).round()}%', '${info.kcal} of ${d.plan?.kcal ?? 0} kcal', 'ddiet'),
-        _ringTile(context, 'Water', info.wg > 0 ? info.water / info.wg : 0.0, '${info.water}/${info.wg}', 'Glasses of 250 ml', 'ddiet'),
-        _ringTile(context, 'Steps', d.stepGoal > 0 ? info.steps / d.stepGoal : 0.0, '${d.stepGoal > 0 ? (info.steps * 100 / d.stepGoal).round() : 0}%', '${info.steps} of ${d.stepGoal}', 'dex'),
-        Stat('BMI', d.bmi.toStringAsFixed(1), s: '${d.cat} · ${app.fmtW(last)}', inverse: true, onTap: () => app.go('bmi')),
-        Stat('Streak', '$st ${st == 1 ? 'day' : 'days'}', s: 'See progress', onTap: () => app.go('progress')),
-      ], min: 170),
-      _gap(),
-      Box(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Eyebrow('Today · ${dayName(DateTime.now())}'), const SizedBox(height: 6), const H2('Task updates'), ...ups])),
-      _gap(),
-      const Muted('Your plans, weekly records and charts are in their own sections: BMI and weight, Daily exercise, Daily diet, Exercise plan, Diet plan and Progress.'),
+        _ringTile(context, 'Workout', info.exT > 0 ? info.exD / info.exT : 0.0, info.exT > 0 ? '${info.exD}/${info.exT}' : 'Rest', info.exT > 0 ? 'tasks done' : 'no session today', 'dex'),
+        _ringTile(context, 'Calories', kcalFrac, '${(kcalFrac * 100).round()}%', '${info.kcal} kcal eaten', 'ddiet'),
+        _ringTile(context, 'Water', info.wg > 0 ? info.water / info.wg : 0.0, '${info.water}/${info.wg}', 'glasses', 'ddiet'),
+        _ringTile(context, 'Steps', d.stepGoal > 0 ? info.steps / d.stepGoal : 0.0, '${d.stepGoal > 0 ? (info.steps * 100 / d.stepGoal).round() : 0}%', '${info.steps} steps', 'dex'),
+      ], min: 150),
+      _gap(12),
+      Box(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [const Eyebrow('Up next'), const SizedBox(height: 6), _TaskUpdates(items: items)])),
+      _gap(12),
+      Wrap(spacing: 8, runSpacing: 8, children: [
+        nav(Icons.speed_outlined, 'BMI and weight', 'bmi'),
+        nav(Icons.calendar_month_outlined, 'Exercise plan', 'explan'),
+        nav(Icons.list_alt_outlined, 'Diet plan', 'dietplan'),
+        nav(Icons.show_chart, 'Progress', 'progress'),
+      ]),
+    ]);
+  }
+}
+
+class _TaskUpdates extends StatefulWidget {
+  final List<_Tk> items;
+  const _TaskUpdates({required this.items});
+  @override
+  State<_TaskUpdates> createState() => _TaskUpdatesState();
+}
+
+class _TaskUpdatesState extends State<_TaskUpdates> {
+  bool all = false;
+  Widget _row(_Tk t) => Padding(
+        padding: const EdgeInsets.only(bottom: 8),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(14),
+          onTap: () => app.go(t.to),
+          child: Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(border: Border.all(color: line(context)), borderRadius: BorderRadius.circular(14)),
+            child: Row(children: [
+              Pill(t.done ? 'Done' : 'Pending'),
+              const SizedBox(width: 12),
+              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(t.title, style: const TextStyle(fontWeight: FontWeight.w600)),
+                if (t.sub.isNotEmpty) Muted(t.sub, size: 12),
+              ])),
+            ]),
+          ),
+        ),
+      );
+
+  @override
+  Widget build(BuildContext context) {
+    final pending = widget.items.where((t) => !t.done).toList();
+    final shown = all ? widget.items : pending.take(3).toList();
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      const SizedBox(height: 4),
+      if (shown.isEmpty) const Padding(padding: EdgeInsets.only(bottom: 10), child: Muted('All tasks are done for today.', size: 14)),
+      for (final t in shown) _row(t),
+      TextButton(
+        onPressed: () => setState(() => all = !all),
+        child: Text(all ? 'Show less' : 'Show all ${widget.items.length} tasks'),
+      ),
     ]);
   }
 }
@@ -1256,13 +1346,15 @@ Widget _ringTile(BuildContext context, String title, double frac, String center,
       borderRadius: BorderRadius.circular(22),
       onTap: () => app.go(to),
       child: Box(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(14),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Eyebrow(title),
-          const SizedBox(height: 12),
-          Center(child: RingGauge(fraction: frac, center: center, size: 84)),
-          const SizedBox(height: 12),
-          Center(child: Muted(sub, size: 12.5)),
+          const SizedBox(height: 10),
+          Row(children: [
+            RingGauge(fraction: frac, center: center, size: 64),
+            const SizedBox(width: 10),
+            Expanded(child: Muted(sub, size: 12)),
+          ]),
         ]),
       ),
     );

@@ -250,7 +250,8 @@ class RingGauge extends StatelessWidget {
   final double fraction;
   final String center;
   final double size;
-  const RingGauge({super.key, required this.fraction, required this.center, this.size = 84});
+  final Color? ink, track;
+  const RingGauge({super.key, required this.fraction, required this.center, this.size = 84, this.ink, this.track});
   @override
   Widget build(BuildContext context) {
     final f = fraction.isNaN ? 0.0 : fraction.clamp(0.0, 1.0);
@@ -262,8 +263,8 @@ class RingGauge extends StatelessWidget {
         width: size,
         height: size,
         child: CustomPaint(
-          painter: _RingPainter(v, fg(context), soft(context)),
-          child: Center(child: Text(center, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600))),
+          painter: _RingPainter(v, ink ?? fg(context), track ?? soft(context), size * 0.11),
+          child: Center(child: Text(center, style: TextStyle(fontSize: (size * 0.2).clamp(12.0, 19.0), fontWeight: FontWeight.w600))),
         ),
       ),
     );
@@ -273,10 +274,10 @@ class RingGauge extends StatelessWidget {
 class _RingPainter extends CustomPainter {
   final double v;
   final Color ink, track;
-  _RingPainter(this.v, this.ink, this.track);
+  final double w;
+  _RingPainter(this.v, this.ink, this.track, this.w);
   @override
   void paint(Canvas canvas, Size size) {
-    const w = 9.0;
     final r = Rect.fromLTWH(w / 2, w / 2, size.width - w, size.height - w);
     canvas.drawArc(r, 0, 6.283185307179586, false, Paint()..color = track..style = PaintingStyle.stroke..strokeWidth = w);
     if (v > 0) {
@@ -285,7 +286,7 @@ class _RingPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant _RingPainter o) => o.v != v || o.ink != ink || o.track != track;
+  bool shouldRepaint(covariant _RingPainter o) => o.v != v || o.ink != ink || o.track != track || o.w != w;
 }
 
 // One bar split in three parts (protein, carbs, fat by calories) that fills in from the left.
@@ -325,6 +326,77 @@ class MacroBar extends StatelessWidget {
       ),
       const SizedBox(height: 12),
       Wrap(spacing: 16, runSpacing: 6, children: [legend('Protein', pG, p, 1.0), legend('Carbs', cG, c, 0.6), legend('Fat', fG, f, 0.3)]),
+    ]);
+  }
+}
+
+
+// ---------------- PureBurn brand ----------------
+// The flame mark, drawn from the same shape as the app icon. The hole in the middle is cut out.
+class BrandMark extends StatelessWidget {
+  final double size;
+  final Color? color;
+  const BrandMark({super.key, this.size = 28, this.color});
+  @override
+  Widget build(BuildContext context) {
+    return TweenAnimationBuilder<double>(
+      tween: Tween<double>(begin: 0.6, end: 1),
+      duration: const Duration(milliseconds: 800),
+      curve: Curves.elasticOut,
+      builder: (context, s, _) => Transform.scale(
+        scale: s,
+        child: SizedBox(width: size, height: size, child: CustomPaint(painter: _FlamePainter(color ?? fg(context)))),
+      ),
+    );
+  }
+}
+
+class _FlamePainter extends CustomPainter {
+  final Color color;
+  _FlamePainter(this.color);
+  @override
+  void paint(Canvas canvas, Size size) {
+    final s = size.width;
+    Offset o(double x, double y) => Offset(x * s, y * s);
+    final path = Path()..fillType = PathFillType.evenOdd;
+    path.moveTo(0.50 * s, 0.90 * s);
+    path.cubicTo(0.25 * s, 0.90 * s, 0.16 * s, 0.68 * s, 0.26 * s, 0.50 * s);
+    path.cubicTo(0.30 * s, 0.43 * s, 0.36 * s, 0.40 * s, 0.38 * s, 0.30 * s);
+    path.cubicTo(0.40 * s, 0.22 * s, 0.45 * s, 0.14 * s, 0.50 * s, 0.08 * s);
+    path.cubicTo(0.58 * s, 0.20 * s, 0.82 * s, 0.38 * s, 0.80 * s, 0.62 * s);
+    path.cubicTo(0.78 * s, 0.80 * s, 0.66 * s, 0.90 * s, 0.50 * s, 0.90 * s);
+    path.close();
+    path.moveTo(o(0.50, 0.84).dx, o(0.50, 0.84).dy);
+    path.cubicTo(0.38 * s, 0.84 * s, 0.35 * s, 0.72 * s, 0.42 * s, 0.62 * s);
+    path.cubicTo(0.45 * s, 0.58 * s, 0.48 * s, 0.56 * s, 0.50 * s, 0.50 * s);
+    path.cubicTo(0.56 * s, 0.58 * s, 0.66 * s, 0.66 * s, 0.64 * s, 0.74 * s);
+    path.cubicTo(0.63 * s, 0.80 * s, 0.57 * s, 0.84 * s, 0.50 * s, 0.84 * s);
+    path.close();
+    canvas.drawPath(path, Paint()..color = color..style = PaintingStyle.fill..isAntiAlias = true);
+  }
+
+  @override
+  bool shouldRepaint(covariant _FlamePainter o) => o.color != color;
+}
+
+// Flame plus the PURE BURN wordmark.
+class BrandLockup extends StatelessWidget {
+  final double height;
+  final Color? color;
+  const BrandLockup({super.key, this.height = 24, this.color});
+  @override
+  Widget build(BuildContext context) {
+    final c = color ?? fg(context);
+    return Row(mainAxisSize: MainAxisSize.min, children: [
+      BrandMark(size: height * 1.15, color: c),
+      SizedBox(width: height * 0.3),
+      Text.rich(
+        TextSpan(children: [
+          TextSpan(text: 'PURE', style: TextStyle(fontWeight: FontWeight.w800, color: c)),
+          TextSpan(text: 'BURN', style: TextStyle(fontWeight: FontWeight.w300, color: c)),
+        ]),
+        style: TextStyle(fontSize: height * 0.72, letterSpacing: height * 0.14),
+      ),
     ]);
   }
 }

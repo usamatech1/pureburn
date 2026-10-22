@@ -53,12 +53,12 @@ const screens = [
 ];
 
 const browser = await chromium.launch({ args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--no-sandbox'] });
-async function shoot(name, mod, dark) {
+async function shoot(name, mod, dark, w = 390, h = 1500) {
   const ctx = await browser.newContext({
-    viewport: { width: 390, height: 1500 },
-    deviceScaleFactor: 2,
-    isMobile: true,
-    hasTouch: true,
+    viewport: { width: w, height: h },
+    deviceScaleFactor: w > 600 ? 1 : 2,
+    isMobile: w <= 600,
+    hasTouch: w <= 600,
     locale: 'en-US',
     timezoneId: 'Asia/Karachi',
     colorScheme: dark ? 'dark' : 'light',
@@ -83,6 +83,8 @@ for (const [name, mod] of screens) {
   try { await shoot(name, mod, false); } catch (e) { console.log('FAILED', name, String(e).slice(0, 400)); }
 }
 try { await shoot('10-dashboard-dark', 'dashboard', true); } catch (e) { console.log('FAILED dark', String(e).slice(0, 400)); }
+try { await shoot('11-dashboard-desktop', 'dashboard', false, 1100, 800); } catch (e) { console.log('FAILED desktop', String(e).slice(0, 400)); }
+
 // A short screen recording so the animations can be seen.
 try {
   const ctx = await browser.newContext({

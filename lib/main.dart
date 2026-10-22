@@ -95,17 +95,16 @@ class Shell extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.fromLTRB(8, 0, 8, 16),
             child: Row(children: [
-              Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: fg(context), width: 1.5)),
-                child: const Icon(Icons.local_fire_department, size: 18),
-              ),
+              const BrandMark(size: 40),
               const SizedBox(width: 12),
-              const Text.rich(TextSpan(children: [
-                TextSpan(text: 'PURE', style: TextStyle(fontWeight: FontWeight.w800)),
-                TextSpan(text: 'BURN', style: TextStyle(fontWeight: FontWeight.w300)),
-              ]), style: TextStyle(fontSize: 17, letterSpacing: 3.5)),
+              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                const Text.rich(TextSpan(children: [
+                  TextSpan(text: 'PURE', style: TextStyle(fontWeight: FontWeight.w800)),
+                  TextSpan(text: 'BURN', style: TextStyle(fontWeight: FontWeight.w300)),
+                ]), style: TextStyle(fontSize: 17, letterSpacing: 3.5)),
+                const SizedBox(height: 3),
+                Text('BURN CLEAN. LIVE PURE.', style: TextStyle(fontSize: 8.5, letterSpacing: 1.6, color: muted(context))),
+              ]),
             ]),
           ),
           Expanded(
@@ -142,10 +141,12 @@ class Shell extends StatelessWidget {
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 980),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Eyebrow(m.eyebrow),
-            const SizedBox(height: 6),
-            H1(m.title),
-            const SizedBox(height: 20),
+            if (app.mod != 'dashboard') ...[
+              Eyebrow(m.eyebrow),
+              const SizedBox(height: 6),
+              H1(m.title),
+              const SizedBox(height: 20),
+            ],
             ModuleView(id: app.mod),
           ]),
         ),
@@ -155,7 +156,7 @@ class Shell extends StatelessWidget {
       return Scaffold(body: Row(children: [_side(context), Expanded(child: body)]));
     }
     return Scaffold(
-      appBar: AppBar(title: Text(m.title, style: const TextStyle(fontWeight: FontWeight.w700)), backgroundColor: Theme.of(context).scaffoldBackgroundColor, elevation: 0),
+      appBar: AppBar(title: app.mod == 'dashboard' ? const BrandLockup() : Text(m.title, style: const TextStyle(fontWeight: FontWeight.w700)), backgroundColor: Theme.of(context).scaffoldBackgroundColor, elevation: 0),
       drawer: Builder(builder: (ctx) => Drawer(width: 268, child: _side(ctx, drawer: true))),
       body: body,
     );

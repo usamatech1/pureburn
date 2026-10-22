@@ -866,7 +866,7 @@ class DietPlanPage extends StatelessWidget {
       if (d.gNote.isNotEmpty) ...[Box(child: Text(d.gNote)), _gap()],
       Pill('${p.headV} · ${p.timeTxt} · ${p.kcal} kcal a day'),
       _gap(),
-      const DietPrefsBox(),
+      DietPrefsBox(),
       _gap(),
       _grid([
         Stat('Food cost', '${rs(df.daily, 5)} / day', s: 'About ${rs(df.daily * 30, 100)} a month', inverse: true),

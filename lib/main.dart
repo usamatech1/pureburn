@@ -54,9 +54,6 @@ ThemeData _theme(Brightness b) {
   );
 }
 
-final ThemeData _lightTheme = _theme(Brightness.light);
-final ThemeData _darkTheme = _theme(Brightness.dark);
-
 class PureBurnApp extends StatelessWidget {
   const PureBurnApp({super.key});
   @override
@@ -67,8 +64,8 @@ class PureBurnApp extends StatelessWidget {
         title: 'PureBurn',
         debugShowCheckedModeBanner: false,
         themeMode: app.theme,
-        theme: _lightTheme,
-        darkTheme: _darkTheme,
+        theme: _theme(Brightness.light),
+        darkTheme: _theme(Brightness.dark),
         builder: (context, child) => Directionality(
           textDirection: TextDirection.ltr,
           child: child ?? const SizedBox.shrink(),

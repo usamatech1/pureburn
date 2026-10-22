@@ -20,12 +20,12 @@ void main() {
 ThemeData _theme(Brightness b) {
   final dark = b == Brightness.dark;
   final scheme = ColorScheme.fromSeed(seedColor: Colors.black, brightness: b).copyWith(
-    primary: dark ? Colors.white : Colors.black,
-    onPrimary: dark ? Colors.black : Colors.white,
+    primary: dark ? const Color(0xFFF28A55) : const Color(0xFFC9531F),
+    onPrimary: dark ? const Color(0xFF1A0D06) : Colors.white,
     surface: dark ? const Color(0xFF050505) : const Color(0xFFF4F4F4),
     onSurface: dark ? const Color(0xFFF5F5F5) : const Color(0xFF0B0B0B),
-    secondaryContainer: dark ? Colors.white : Colors.black,
-    onSecondaryContainer: dark ? Colors.black : Colors.white,
+    secondaryContainer: dark ? const Color(0xFFF28A55) : const Color(0xFFC9531F),
+    onSecondaryContainer: dark ? const Color(0xFF1A0D06) : Colors.white,
     outline: dark ? const Color(0xFF3A3A3A) : const Color(0xFFCBCBCB),
   );
   return ThemeData(
@@ -209,8 +209,8 @@ class _NavBtn extends StatelessWidget {
   const _NavBtn({required this.m, required this.on, required this.onTap});
   @override
   Widget build(BuildContext context) {
-    final bg = on ? fg(context) : Colors.transparent;
-    final ink = on ? Theme.of(context).colorScheme.surface : muted(context);
+    final bg = on ? accent(context).withOpacity(0.16) : Colors.transparent;
+    final ink = on ? accent(context) : muted(context);
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 1),
       child: InkWell(
@@ -218,7 +218,7 @@ class _NavBtn extends StatelessWidget {
         onTap: onTap,
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
-          decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(14)),
+          decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(14), border: Border.all(color: on ? accent(context).withOpacity(0.35) : Colors.transparent)),
           child: Row(children: [
             Icon(m.icon, size: 19, color: ink),
             const SizedBox(width: 12),

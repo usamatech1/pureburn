@@ -184,7 +184,7 @@ class _WorkoutPageState extends State<WorkoutPage> {
   Widget _setRow(ExItem e, int n, String date, int i, List<SetLog> l) {
     final s = l[i];
     return Padding(
-      padding: const EdgeInsets.only(top: 12, bottom: 4),
+      padding: const EdgeInsets.only(bottom: 10),
       child: Row(children: [
         SizedBox(width: 44, child: Text('Set ${i + 1}', style: TextStyle(color: muted(context), fontSize: 12.5))),
         SizedBox(
@@ -194,7 +194,7 @@ class _WorkoutPageState extends State<WorkoutPage> {
             initialValue: '${s.reps}',
             keyboardType: TextInputType.number,
             textAlign: TextAlign.center,
-            decoration: InputDecoration(isDense: true, labelText: e.hold ? 'sec' : 'reps', floatingLabelBehavior: FloatingLabelBehavior.always, contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12)),
+            decoration: const InputDecoration(isDense: true, hintText: '0', contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 13)),
             onChanged: (v) {
               s.reps = int.tryParse(v) ?? s.reps;
               app.persist();
@@ -209,7 +209,7 @@ class _WorkoutPageState extends State<WorkoutPage> {
             initialValue: s.kg == 0 ? '' : tidy(s.kg),
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
             textAlign: TextAlign.center,
-            decoration: const InputDecoration(isDense: true, labelText: 'kg', floatingLabelBehavior: FloatingLabelBehavior.always, contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 12)),
+            decoration: const InputDecoration(isDense: true, hintText: 'kg', contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 13)),
             onChanged: (v) {
               s.kg = double.tryParse(v.replaceAll(',', '.')) ?? 0;
               app.persist();
@@ -265,6 +265,15 @@ class _WorkoutPageState extends State<WorkoutPage> {
             ),
           if (info != null && isOpen) _info(info),
           const SizedBox(height: 6),
+          Padding(
+            padding: const EdgeInsets.only(top: 6, bottom: 6),
+            child: Row(children: [
+              const SizedBox(width: 44),
+              SizedBox(width: 76, child: Center(child: Muted(e.hold ? 'Seconds' : 'Reps', size: 12))),
+              const SizedBox(width: 8),
+              const SizedBox(width: 84, child: Center(child: Muted('Weight (kg)', size: 12))),
+            ]),
+          ),
           for (var i = 0; i < n; i++) _setRow(e, n, date, i, l),
         ]),
       ),

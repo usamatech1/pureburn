@@ -22,37 +22,73 @@ void buzz([bool strong = false]) {
   }
 }
 
-/// Soft, calm backdrop: a faint warm glow at the top over a deep gradient.
-class Ambient extends StatelessWidget {
+/// Calm backdrop: a deep gradient with a warm glow that slowly breathes.
+class Ambient extends StatefulWidget {
   final Widget child;
   const Ambient({super.key, required this.child});
   @override
+  State<Ambient> createState() => _AmbientState();
+}
+
+class _AmbientState extends State<Ambient> with SingleTickerProviderStateMixin {
+  late final AnimationController _c = AnimationController(vsync: this, duration: const Duration(seconds: 9));
+
+  @override
+  void initState() {
+    super.initState();
+    _c.repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final dark = Theme.of(context).brightness == Brightness.dark;
+    final a = accent(context);
+    final still = MediaQuery.of(context).disableAnimations;
     return Stack(children: [
       Positioned.fill(
         child: RepaintBoundary(
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: dark ? const [Color(0xFF0E0C0B), Color(0xFF050505)] : const [Color(0xFFFAF6F2), Color(0xFFF2F2F2)],
-              ),
-            ),
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: RadialGradient(
-                  center: const Alignment(0.85, -1.05),
-                  radius: 1.1,
-                  colors: [accent(context).withOpacity(dark ? 0.10 : 0.09), Colors.transparent],
+          child: AnimatedBuilder(
+            animation: still ? const AlwaysStoppedAnimation<double>(0.5) : _c,
+            builder: (context, _) {
+              final t = Curves.easeInOut.transform(still ? 0.5 : _c.value);
+              return DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: dark ? const [Color(0xFF120D0A), Color(0xFF060505), Color(0xFF040404)] : const [Color(0xFFFFF1E6), Color(0xFFF7F1EC), Color(0xFFF1EEEB)],
+                  ),
                 ),
-              ),
-            ),
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: RadialGradient(
+                      center: Alignment(0.9 - 0.25 * t, -1.0 + 0.1 * t),
+                      radius: 0.9 + 0.25 * t,
+                      colors: [a.withOpacity((dark ? 0.22 : 0.20) + 0.06 * t), Colors.transparent],
+                    ),
+                  ),
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: RadialGradient(
+                        center: Alignment(-1.0 + 0.2 * t, 1.05),
+                        radius: 0.85,
+                        colors: [a.withOpacity(dark ? 0.09 : 0.08), Colors.transparent],
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            },
           ),
         ),
       ),
-      child,
+      widget.child,
     ]);
   }
 }
@@ -64,23 +100,35 @@ class Box extends StatelessWidget {
   const Box({super.key, required this.child, this.padding = const EdgeInsets.all(20), this.dark = false});
   @override
   Widget build(BuildContext context) {
-    return Container(
+    final night = Theme.of(context).brightness == Brightness.dark;
+    final a = accent(context);
+    final deco = dark
+        ? BoxDecoration(
+            gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFF17110D), Color(0xFF0A0A0A)]),
+            borderRadius: BorderRadius.circular(22),
+            border: Border.all(color: a.withOpacity(0.28)),
+            boxShadow: [BoxShadow(color: a.withOpacity(0.10), blurRadius: 28, offset: const Offset(0, 10))],
+          )
+        : BoxDecoration(
+            gradient: night
+                ? const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xCC1B1612), Color(0xCC0E0C0B)])
+                : const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xE6FFFFFF), Color(0xD9FFF8F1)]),
+            borderRadius: BorderRadius.circular(22),
+            border: Border.all(color: night ? const Color(0x24FFFFFF) : const Color(0xFFEBDDD0)),
+            boxShadow: night ? null : const [BoxShadow(color: Color(0x14B45A28), blurRadius: 22, offset: Offset(0, 8))],
+          );
+    final body = Container(
       width: double.infinity,
       padding: padding,
-      decoration: BoxDecoration(
-        color: dark ? const Color(0xFF0B0B0B) : null,
-        gradient: dark
-            ? null
-            : (Theme.of(context).brightness == Brightness.dark
-                ? const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFF151413), Color(0xFF0E0E0E)])
-                : const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Colors.white, Color(0xFFFBF8F5)])),
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: dark ? const Color(0xFF2A2A2A) : line(context)),
-        boxShadow: Theme.of(context).brightness == Brightness.dark || dark
-            ? null
-            : const [BoxShadow(color: Color(0x0F000000), blurRadius: 18, offset: Offset(0, 6))],
-      ),
+      decoration: deco,
       child: dark ? DefaultTextStyle.merge(style: const TextStyle(color: Colors.white), child: child) : child,
+    );
+    return TweenAnimationBuilder<double>(
+      tween: Tween<double>(begin: 0, end: 1),
+      duration: const Duration(milliseconds: 380),
+      curve: Curves.easeOutCubic,
+      builder: (context, v, w) => Opacity(opacity: v, child: Transform.translate(offset: Offset(0, 12 * (1 - v)), child: w)),
+      child: body,
     );
   }
 }
@@ -91,7 +139,7 @@ class Eyebrow extends StatelessWidget {
   const Eyebrow(this.t, {super.key, this.onDark = false});
   @override
   Widget build(BuildContext context) => Text(tr(t).toUpperCase(),
-      style: TextStyle(fontSize: 10.5, letterSpacing: 1.6, fontWeight: FontWeight.w500, color: onDark ? const Color(0xFFA6A6A6) : muted(context)));
+      style: TextStyle(fontSize: 10.5, letterSpacing: 1.6, fontWeight: FontWeight.w500, color: onDark ? const Color(0xFFD9A98C) : accent(context)));
 }
 
 class H1 extends StatelessWidget {

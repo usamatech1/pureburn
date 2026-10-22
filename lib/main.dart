@@ -93,6 +93,9 @@ const mods = [
   ModDef('progress', 'Progress', 'Tracking', Icons.show_chart, 'Tracking'),
   ModDef('measure', 'Measurements', 'Your body', Icons.straighten),
   ModDef('report', 'Weekly report', 'Share', Icons.ios_share_outlined),
+  ModDef('coach', 'AI coach', 'Coach', Icons.psychology_alt_outlined, 'Coach and community'),
+  ModDef('challenges', 'Challenges', 'Community', Icons.emoji_events_outlined),
+  ModDef('account', 'Account and sync', 'Account', Icons.cloud_sync_outlined),
   ModDef('settings', 'Settings', 'More', Icons.tune, 'More'),
 ];
 

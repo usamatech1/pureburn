@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'logic.dart';
+import 'cloud.dart';
 import 'foods.dart';
 import 'dietfit.dart';
 
@@ -44,6 +45,9 @@ class AppState extends ChangeNotifier {
 
   Future<void> load() async {
     _sp = await SharedPreferences.getInstance();
+    cloud.exporter = exportJson;
+    cloud.onRemote = (t) async => importJson(t);
+    await cloud.load(_sp!);
     try {
       final raw = _sp!.getString('pureburn-state-v1');
       if (raw != null) {
@@ -73,7 +77,7 @@ class AppState extends ChangeNotifier {
     _rebuild();
     // Deep link for the web version, for example ?mod=progress opens the Progress section.
     final q = Uri.base.queryParameters['mod'];
-    if (q != null && const ['dashboard', 'profile', 'result', 'bmi', 'dex', 'ddiet', 'explan', 'dietplan', 'progress', 'measure', 'report', 'settings', 'foods', 'shop', 'workout', 'sleep'].contains(q)) {
+    if (q != null && const ['dashboard', 'profile', 'result', 'bmi', 'dex', 'ddiet', 'explan', 'dietplan', 'progress', 'measure', 'report', 'settings', 'foods', 'shop', 'workout', 'sleep', 'coach', 'challenges', 'account'].contains(q)) {
       mod = q;
     }
     unlocked = !(set['lock'] == true && (set['pinHash'] as String).isNotEmpty) || Uri.base.queryParameters.containsKey('nolock');
@@ -307,6 +311,7 @@ class AppState extends ChangeNotifier {
             'wlog': _wlogTo(),
           }));
     }
+    cloud.markDirty();
   }
 
   void go(String m) {

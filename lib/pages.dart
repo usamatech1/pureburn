@@ -6,6 +6,7 @@ import 'main.dart' show app;
 import 'features.dart';
 import 'nutrition_pages.dart';
 import 'workout_pages.dart';
+import 'cloud_pages.dart';
 import 'services.dart';
 import 'ui.dart';
 
@@ -41,6 +42,12 @@ class ModuleView extends StatelessWidget {
         return DietPlanPage();
       case 'progress':
         return ProgressPage();
+      case 'coach':
+        return const CoachPage();
+      case 'challenges':
+        return const ChallengesPage();
+      case 'account':
+        return const AccountPage();
       case 'workout':
         return const WorkoutPage();
       case 'sleep':

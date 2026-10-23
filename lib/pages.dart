@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart' hide Text;
 import 'i18n.dart';
 import 'package:flutter/services.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'logic.dart';
 import 'main.dart' show app;
 import 'features.dart';
@@ -741,7 +743,7 @@ class BmiPage extends StatelessWidget {
       if (d.plan != null) ...[
         if (d.gNote.isNotEmpty) Box(child: Text(d.gNote)),
         if (d.gNote.isNotEmpty) _gap(),
-        _glance(d),
+        _glance(context, d),
       ] else
         _blocked(d),
       _gap(),
@@ -769,13 +771,34 @@ Widget _trow(String a, String b, {bool bold = false}) => Padding(
       ]),
     );
 
-Widget _glance(Derived d) {
+Widget _chipTag(BuildContext context, String t, {Color? color, bool dark = false}) {
+  final c = color ?? accent(context);
+  return Container(
+    padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+    decoration: BoxDecoration(color: c.withOpacity(dark ? 0.22 : 0.14), borderRadius: BorderRadius.circular(20), border: Border.all(color: c.withOpacity(0.45))),
+    child: Text(t, style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: dark ? Colors.white : c)),
+  );
+}
+
+Widget _glance(BuildContext context, Derived d) {
   final p = d.plan!;
+  final first = p.sched.isNotEmpty ? p.sched.first : null;
   return _grid([
     Stat('Your goal', p.headV, s: p.headS, inverse: true),
     Stat('Time to goal', p.timeTxt, s: p.paceS),
-    Stat('Daily calories', '${p.kcal} kcal', s: 'Includes about ${(p.E / 5).round() * 5} kcal a day to fuel your workouts'),
-    Stat('Workouts', '${d.g!.days} days a week', s: 'About ${(p.weekly / 10).round() * 10} kcal burned a week'),
+    Stat('Daily calories', '${p.kcal} kcal', s: 'Includes about ${(p.E / 5).round() * 5} kcal a day to fuel your workouts',
+        extra: Wrap(spacing: 6, runSpacing: 6, children: [
+          _chipTag(context, 'P ${p.pG}g'),
+          _chipTag(context, 'C ${p.cG}g', color: const Color(0xFF2E9E6B)),
+          _chipTag(context, 'F ${p.fG}g', color: const Color(0xFFB8860B)),
+        ])),
+    Stat('Workouts', '${d.g!.days} days a week', s: 'About ${(p.weekly / 10).round() * 10} kcal burned a week',
+        extra: first == null
+            ? null
+            : Wrap(spacing: 6, runSpacing: 6, children: [
+                _chipTag(context, d.g!.place == 'home' ? 'Home' : 'Gym'),
+                _chipTag(context, '${first.min} min sessions', color: const Color(0xFF2E9E6B)),
+              ])),
   ], min: 220);
 }
 
@@ -1239,6 +1262,26 @@ class ResultPage extends StatelessWidget {
     return b.toString();
   }
 
+  Future<void> _whatsapp(BuildContext context) async {
+    final text = _summary();
+    var ok = false;
+    try {
+      ok = await launchUrl(Uri.parse('https://wa.me/?text=${Uri.encodeComponent(text)}'), mode: LaunchMode.externalApplication);
+    } catch (_) {}
+    if (!ok) {
+      try {
+        await Share.share(text);
+        ok = true;
+      } catch (_) {}
+    }
+    if (!ok) {
+      await Clipboard.setData(ClipboardData(text: text));
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Could not open WhatsApp. Summary copied, paste it in any chat.')));
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final d = app.d, p = app.p;
@@ -1265,9 +1308,16 @@ class ResultPage extends StatelessWidget {
     );
 
     final details = Box(
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        const H2('Your details'),
-        const SizedBox(height: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
+      child: Theme(
+        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          tilePadding: EdgeInsets.zero,
+          childrenPadding: const EdgeInsets.only(bottom: 12),
+          expandedCrossAxisAlignment: CrossAxisAlignment.start,
+          title: const Text('Show input details', style: TextStyle(fontWeight: FontWeight.w700)),
+          subtitle: const Muted('Your body, goal and pace', size: 12),
+          children: [
         _trow('Sex', p.sex == 'm' ? 'Male' : 'Female'),
         _trow('Age', '${p.age} years'),
         _trow('Height', _height()),
@@ -1283,25 +1333,53 @@ class ResultPage extends StatelessWidget {
         const Divider(),
         _trow('Best weight', app.fmtW(d.target)),
         _trow('Healthy range', '${tidy(app.toDisp(d.minKg))} to ${app.fmtW(d.maxKg)}'),
-      ]),
+          ],
+        ),
+      ),
     );
 
+    final today = isoDate(DateTime.now());
+    final trow = d.plan != null ? app.rowFor(today) : null;
+    final cta = d.plan == null
+        ? const SizedBox.shrink()
+        : Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton(
+                style: FilledButton.styleFrom(minimumSize: const Size(0, 58), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)), textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+                onPressed: () { buzz(); app.go(trow == null ? 'ddiet' : 'workout'); },
+                child: Row(mainAxisAlignment: MainAxisAlignment.center, mainAxisSize: MainAxisSize.min, children: [
+                  const Icon(Icons.play_arrow_rounded),
+                  const SizedBox(width: 8),
+                  Flexible(child: Text(trow == null ? "Start today's plan: log your food" : "Start today's plan: ${trow.name}", overflow: TextOverflow.ellipsis)),
+                ]),
+              ),
+            ),
+            const SizedBox(height: 6),
+            Muted(trow == null ? 'Rest day today. Take an easy 15 minute recovery walk and log your meals.' : '${trow.min} minutes, about ${(trow.kcal / 5).round() * 5} kcal. Then log your meals.', size: 12.5),
+          ]);
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       hero,
       _gap(),
-      details,
+      if (d.plan != null) ...[_glance(context, d), _gap()],
+      cta,
       _gap(),
-      if (d.plan != null) ...[_glance(d), _gap()],
       Wrap(spacing: 10, runSpacing: 10, children: [
         FilledButton.icon(
+          style: FilledButton.styleFrom(backgroundColor: const Color(0xFF1FA855), foregroundColor: Colors.white),
+          onPressed: () => _whatsapp(context),
+          icon: const Icon(Icons.send_rounded),
+          label: const Text('Share on WhatsApp'),
+        ),
+        OutlinedButton.icon(
           onPressed: () async {
             await Clipboard.setData(ClipboardData(text: _summary()));
             if (context.mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Summary copied. You can paste it in WhatsApp or notes.')));
+              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Summary copied. You can paste it in notes or any chat.')));
             }
           },
           icon: const Icon(Icons.copy_all_outlined),
-          label: const Text('Copy summary to share'),
+          label: const Text('Copy summary'),
         ),
         OutlinedButton.icon(
           onPressed: () => app.go('profile'),
@@ -1309,6 +1387,8 @@ class ResultPage extends StatelessWidget {
           label: const Text('Edit details'),
         ),
       ]),
+      _gap(),
+      details,
       _gap(28),
       const Eyebrow('Your sections'),
       const SizedBox(height: 6),
@@ -1514,7 +1594,9 @@ Widget _sectionCards(BuildContext context) {
   final today = isoDate(DateTime.now());
   final info = app.dayInfo(today);
   final row = app.rowFor(today);
-  Widget secCard(IconData icon, String title, String result, String to) => InkWell(
+  Widget secCard(IconData icon, String title, String result, String to, {Widget? badge, bool dim = false}) => Opacity(
+      opacity: dim ? 0.62 : 1,
+      child: InkWell(
         borderRadius: BorderRadius.circular(22),
         onTap: () => app.go(to),
         child: Box(
@@ -1526,17 +1608,18 @@ Widget _sectionCards(BuildContext context) {
               Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
               const SizedBox(height: 2),
               Muted(result, size: 12.5),
+              if (badge != null) ...[const SizedBox(height: 6), badge],
             ])),
             const Icon(Icons.chevron_right),
           ]),
         ),
-      );
+      ));
   return _grid([
     secCard(Icons.speed_outlined, 'BMI and weight', 'BMI ${d.bmi.toStringAsFixed(1)} · ${d.cat}. Best weight ${app.fmtW(d.target)}', 'bmi'),
     secCard(Icons.calendar_month_outlined, 'Exercise plan', '${d.g!.days} days a week, about ${(pl.weekly / 10).round() * 10} kcal burned a week', 'explan'),
-    secCard(Icons.list_alt_outlined, 'Diet plan', '${pl.kcal} kcal a day, about ${rs(df.daily, 5)} of food a day', 'dietplan'),
-    secCard(Icons.fitness_center, 'Daily exercise', row == null ? 'Rest day today' : 'Today: ${row.name}', 'dex'),
-    secCard(Icons.play_circle_outline, 'Workout player', row == null ? 'Rest day today' : 'Sets, reps and timers for ${row.name}', 'workout'),
+    secCard(Icons.list_alt_outlined, 'Diet plan', '${pl.kcal} kcal a day', 'dietplan', badge: _chipTag(context, 'Budget friendly: ~${rs(df.daily, 5)}/day', color: const Color(0xFF2E9E6B))),
+    secCard(Icons.fitness_center, 'Daily exercise', row == null ? 'Rest day. Active recovery walk, 15 min' : 'Today: ${row.name}', 'dex', dim: row == null),
+    secCard(Icons.play_circle_outline, 'Workout player', row == null ? 'Rest day. You can still train if you want' : 'Sets, reps and timers for ${row.name}', 'workout', dim: row == null),
     secCard(Icons.bedtime_outlined, 'Sleep', (app.logs[app.selDate]?.sleep ?? 0) > 0 ? '${tidy(app.logs[app.selDate]!.sleep)} hours logged' : 'Log last night\'s sleep', 'sleep'),
     secCard(Icons.monitor_heart_outlined, 'Health modes', healthSummary(), 'health'),
     secCard(Icons.restaurant_outlined, 'Daily diet', '${info.kcal} of ${pl.kcal} kcal eaten today', 'ddiet'),

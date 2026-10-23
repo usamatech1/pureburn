@@ -171,7 +171,8 @@ class Stat extends StatelessWidget {
   final String k, v, s;
   final bool inverse;
   final VoidCallback? onTap;
-  const Stat(this.k, this.v, {super.key, this.s = '', this.inverse = false, this.onTap});
+  final Widget? extra;
+  const Stat(this.k, this.v, {super.key, this.s = '', this.inverse = false, this.onTap, this.extra});
   @override
   Widget build(BuildContext context) {
     final c = Box(
@@ -182,6 +183,7 @@ class Stat extends StatelessWidget {
         const SizedBox(height: 8),
         Text(v, style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w300, letterSpacing: -0.8, height: 1.1)),
         if (s.isNotEmpty) ...[const SizedBox(height: 6), inverse ? Text(s, style: const TextStyle(fontSize: 12.5, color: Color(0xFFA6A6A6))) : Muted(s, size: 12.5)],
+        if (extra != null) ...[const SizedBox(height: 10), extra!],
       ]),
     );
     return onTap == null ? c : GestureDetector(onTap: onTap, child: c);

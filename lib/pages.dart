@@ -316,6 +316,42 @@ class WeightChart extends StatelessWidget {
   }
 }
 
+// ---------------- quick weight log ----------------
+Future<void> logWeightDialog(BuildContext context) async {
+  final today = isoDate(DateTime.now());
+  final todays = app.weights.where((w) => w.d == today);
+  final c = TextEditingController(text: tidy(app.toDisp(todays.isNotEmpty ? todays.first.kg : app.d.w)));
+  await showDialog<void>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: const Text("Log today's weight"),
+      content: TextField(
+        controller: c,
+        autofocus: true,
+        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+        inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]'))],
+        decoration: InputDecoration(suffixText: app.unitLbl()),
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+        FilledButton(
+          onPressed: () {
+            final n = double.tryParse(c.text.replaceAll(',', '.'));
+            if (n == null || app.fromDisp(n) < 20 || app.fromDisp(n) > 300) {
+              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Enter a weight between 20 and 300 kg.')));
+              return;
+            }
+            app.addWeight(today, app.fromDisp(n));
+            Navigator.pop(ctx);
+          },
+          child: const Text('Save'),
+        ),
+      ],
+    ),
+  );
+  c.dispose();
+}
+
 // ---------------- profile ----------------
 final profileStep = ValueNotifier<int>(0);
 bool profileStepped(BuildContext c) => MediaQuery.of(c).size.width < 1100;
@@ -676,7 +712,7 @@ class BmiPage extends StatelessWidget {
       (d.hiStart, d.obStart, 'Over'),
       (d.obStart, s1, 'Obese'),
     ];
-    final shades = [0.25, 1.0, 0.55, 0.8];
+    const zoneColors = [Color(0xFF5B8DEF), Color(0xFF2E9E6B), Color(0xFFF0A030), Color(0xFFD64545)];
     final hero = Box(
       dark: true,
       padding: const EdgeInsets.all(24),
@@ -696,7 +732,21 @@ class BmiPage extends StatelessWidget {
             decoration: BoxDecoration(border: Border.all(color: Colors.white, width: 1.5), borderRadius: BorderRadius.circular(99), color: d.cls == 'ok' || d.cls == 'bad' ? Colors.white : null),
             child: Text(d.cat.toUpperCase(), style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 1.2, color: d.cls == 'ok' || d.cls == 'bad' ? Colors.black : Colors.white)),
           ),
+          const SizedBox(width: 8),
+          Tooltip(
+            message: app.p.std == 'asia' ? 'South Asian cutoff: overweight from BMI 23. The WHO general cutoff is 25.' : 'WHO general cutoff: overweight from BMI 25.',
+            triggerMode: TooltipTriggerMode.tap,
+            child: const Padding(padding: EdgeInsets.all(8), child: Icon(Icons.info_outline, size: 20, color: Color(0xFFA6A6A6))),
+          ),
         ]),
+        if (app.p.std == 'asia') ...[
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(color: Colors.white.withOpacity(0.12), borderRadius: BorderRadius.circular(20)),
+            child: Text('South Asian cutoff (≥ ${tidy(d.hiStart)})', style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: Colors.white)),
+          ),
+        ],
         const SizedBox(height: 12),
         Text(d.text, style: const TextStyle(color: Color(0xFFA6A6A6), height: 1.4)),
         const SizedBox(height: 22),
@@ -711,7 +761,7 @@ class BmiPage extends StatelessWidget {
                   left: pos(segs[i].$1) * w,
                   width: (pos(segs[i].$2) - pos(segs[i].$1)) * w - 3,
                   top: 34,
-                  child: Container(height: 14, decoration: BoxDecoration(color: Colors.white.withOpacity(shades[i]), borderRadius: BorderRadius.circular(4))),
+                  child: Container(height: 14, decoration: BoxDecoration(color: zoneColors[i], borderRadius: BorderRadius.circular(4))),
                 ),
               for (final v in [d.loBmi, d.hiStart, d.obStart])
                 Positioned(
@@ -766,20 +816,68 @@ class BmiPage extends StatelessWidget {
     final hm = d.h / 100;
     final bmiSeries = [for (final w in app.weights) w.kg / (hm * hm)];
     final onTarget = d.changeV == 'On target';
+    final startKg = app.weights.isNotEmpty ? app.weights.first.kg : d.w;
+    final goalKg = d.plan != null && d.goal != 'maintain' ? d.tKg : d.target;
+    final nowKg = d.w;
+    final totalGap = (startKg - goalKg).abs();
+    var prog = totalGap < 0.05 ? 1.0 : ((startKg - nowKg) / (startKg - goalKg)).clamp(0.0, 1.0);
+    if (onTarget) prog = 1.0;
+    Widget wcol(String k, String v, {bool end = false}) => Expanded(
+          child: Column(crossAxisAlignment: end ? CrossAxisAlignment.end : CrossAxisAlignment.start, children: [
+            Text(k.toUpperCase(), style: const TextStyle(fontSize: 10, letterSpacing: 1, color: Color(0xFFA6A6A6))),
+            const SizedBox(height: 2),
+            Text(v, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+          ]),
+        );
     final summary = Box(
-      child: Row(children: [
-        Icon(onTarget ? Icons.check_circle_outline : Icons.flag_outlined, color: accent(context), size: 28),
-        const SizedBox(width: 14),
-        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(onTarget ? 'You are in your healthy range' : '${d.changeV} to reach your best weight', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
-          const SizedBox(height: 2),
-          Muted(d.changeS, size: 12.5),
-        ])),
+      dark: true,
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        const Eyebrow('Goal progress', onDark: true),
+        const SizedBox(height: 8),
+        Text(onTarget ? 'You are in your healthy range' : '${d.changeV} to reach your best weight', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 20)),
+        const SizedBox(height: 14),
+        Row(children: [
+          wcol('Start', app.fmtW(startKg)),
+          wcol('Now', app.fmtW(nowKg)),
+          wcol('Target', app.fmtW(goalKg), end: true),
+        ]),
+        const SizedBox(height: 12),
+        Bar(prog),
+        const SizedBox(height: 6),
+        Text(
+          totalGap < 0.05 ? d.changeS : '${(prog * 100).round()}% of the way. ${app.fmtD((nowKg - goalKg).abs())} ${onTarget ? 'from target' : 'to go'}.',
+          style: const TextStyle(color: Color(0xFFA6A6A6), fontSize: 12.5),
+        ),
+        const SizedBox(height: 14),
+        SizedBox(
+          width: double.infinity,
+          child: FilledButton.icon(
+            style: FilledButton.styleFrom(minimumSize: const Size(0, 50), backgroundColor: Colors.white, foregroundColor: Colors.black, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
+            onPressed: () { buzz(); logWeightDialog(context); },
+            icon: const Icon(Icons.monitor_weight_outlined),
+            label: const Text("Log today's weight"),
+          ),
+        ),
+      ]),
+    );
+    final afterBmi = goalKg / (hm * hm);
+    final zoneIdx = afterBmi < d.loBmi ? 0 : afterBmi < d.hiStart ? 1 : afterBmi < d.obStart ? 2 : 3;
+    const zoneNames = ['Underweight zone', 'Healthy green zone', 'Overweight zone', 'Obese zone'];
+    const zoneCols = [Color(0xFF5B8DEF), Color(0xFF2E9E6B), Color(0xFFF0A030), Color(0xFFD64545)];
+    final preview = Box(
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        const Eyebrow('When you reach your target'),
+        const SizedBox(height: 8),
+        Text('BMI ${afterBmi.toStringAsFixed(1)}', style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w300, letterSpacing: -0.8)),
+        const SizedBox(height: 6),
+        _chipTag(context, zoneNames[zoneIdx], color: zoneCols[zoneIdx]),
+        const SizedBox(height: 8),
+        Muted('At ${app.fmtW(goalKg)} your BMI will ${afterBmi < d.bmi - 0.05 ? 'drop' : afterBmi > d.bmi + 0.05 ? 'rise' : 'stay'} from ${d.bmi.toStringAsFixed(1)} to ${afterBmi.toStringAsFixed(1)}.', size: 12.5),
       ]),
     );
     final two = [
-      Stat('Best weight', app.fmtW(d.target), s: 'Ideal target for your height', inverse: true),
       Stat('Healthy range', range, s: 'BMI 18.5 to ${d.hiBmi.toStringAsFixed(1)}'),
+      preview,
     ];
     final whtr = app.measures.isNotEmpty && app.measures.last.waist > 0 ? app.measures.last.waist / app.p.heightCm : 0.0;
     final waistCard = Box(
@@ -860,8 +958,7 @@ class BmiPage extends StatelessWidget {
       Wrap(spacing: 10, runSpacing: 10, children: [
         if (d.plan != null)
           FilledButton.icon(onPressed: () { buzz(); app.go('result'); }, icon: const Icon(Icons.arrow_forward_rounded), label: const Text('See my plan')),
-        OutlinedButton.icon(onPressed: () { buzz(); app.go('progress'); }, icon: const Icon(Icons.monitor_weight_outlined), label: const Text('Update my weight')),
-      ]),
+              ]),
       _gap(),
       LayoutBuilder(builder: (c, bc) => bc.maxWidth >= 720
           ? Row(crossAxisAlignment: CrossAxisAlignment.start, children: [Expanded(child: trend), const SizedBox(width: 12), Expanded(child: waistCard)])

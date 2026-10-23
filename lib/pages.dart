@@ -338,9 +338,14 @@ class ProfileBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final stepped = profileStepped(context);
-    return Material(
-      color: Theme.of(context).scaffoldBackgroundColor.withOpacity(0.96),
-      elevation: 8,
+    final ac = accent(context);
+    final shape = RoundedRectangleBorder(borderRadius: BorderRadius.circular(16));
+    return Container(
+      decoration: BoxDecoration(
+        color: Theme.of(context).scaffoldBackgroundColor,
+        border: Border(top: BorderSide(color: Theme.of(context).dividerColor)),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.10), blurRadius: 16, offset: const Offset(0, -4))],
+      ),
       child: SafeArea(
         top: false,
         child: Padding(
@@ -352,23 +357,56 @@ class ProfileBar extends StatelessWidget {
               child: ValueListenableBuilder<int>(
                 valueListenable: profileStep,
                 builder: (c, st, _) {
-                  final submit = FilledButton.icon(
+                  final d = app.d;
+                  final style = FilledButton.styleFrom(minimumSize: const Size(0, 54), shape: shape, textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700));
+                  final submit = FilledButton(
+                    style: style,
                     onPressed: () { buzz(); submitProfile(context); },
-                    icon: const Icon(Icons.check_circle_outline),
-                    label: const Text('Submit and see my plan'),
+                    child: const Row(mainAxisAlignment: MainAxisAlignment.center, mainAxisSize: MainAxisSize.min, children: [
+                      Flexible(child: Text('See my plan', overflow: TextOverflow.ellipsis)),
+                      SizedBox(width: 8),
+                      Icon(Icons.arrow_forward_rounded, size: 20),
+                    ]),
                   );
-                  if (!stepped) return SizedBox(width: double.infinity, child: submit);
+                  if (!stepped) {
+                    return Row(children: [
+                      Expanded(
+                        child: d.ok && d.plan != null
+                            ? Wrap(spacing: 8, runSpacing: 4, crossAxisAlignment: WrapCrossAlignment.center, children: [
+                                Icon(Icons.local_fire_department_outlined, color: ac, size: 20),
+                                Text('${d.plan!.kcal} kcal/day', style: const TextStyle(fontWeight: FontWeight.w800)),
+                                Text('·  ${d.plan!.timeTxt}', style: const TextStyle(fontWeight: FontWeight.w600)),
+                              ])
+                            : const SizedBox.shrink(),
+                      ),
+                      const SizedBox(width: 16),
+                      SizedBox(width: 280, child: submit),
+                    ]);
+                  }
                   if (st == 0) {
                     return SizedBox(
                       width: double.infinity,
                       child: FilledButton(
+                        style: style,
                         onPressed: () { buzz(); FocusScope.of(context).unfocus(); profileStep.value = 1; },
-                        child: const Text('Next: Set your goal →'),
+                        child: const Row(mainAxisAlignment: MainAxisAlignment.center, mainAxisSize: MainAxisSize.min, children: [
+                          Text('Next: Set your goal'),
+                          SizedBox(width: 8),
+                          Icon(Icons.arrow_forward_rounded, size: 20),
+                        ]),
                       ),
                     );
                   }
                   return Row(children: [
-                    OutlinedButton(onPressed: () { buzz(); profileStep.value = 0; }, child: const Text('Back')),
+                    SizedBox(
+                      width: 56,
+                      height: 54,
+                      child: OutlinedButton(
+                        style: OutlinedButton.styleFrom(padding: EdgeInsets.zero, shape: shape),
+                        onPressed: () { buzz(); profileStep.value = 0; },
+                        child: const Icon(Icons.arrow_back_rounded),
+                      ),
+                    ),
                     const SizedBox(width: 10),
                     Expanded(child: submit),
                   ]);
@@ -566,6 +604,12 @@ class _ProfilePageState extends State<ProfilePage> {
         ]),
       );
 
+  String _kgTxt(double kg) {
+    final v = app.toDisp(kg);
+    final t = v.toStringAsFixed(2).replaceFirst(RegExp(r'0+$'), '').replaceFirst(RegExp(r'\.$'), '');
+    return '$t ${app.unitLbl()}';
+  }
+
   Widget _paceCards(String goal, Profile p) {
     final gain = goal == 'gain';
     final opts = [
@@ -594,7 +638,7 @@ class _ProfilePageState extends State<ProfilePage> {
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text(o.$2, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14)),
                 const SizedBox(height: 4),
-                Text('~${app.fmtD(o.$3)}/week', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                Text('~${_kgTxt(o.$3)}/week', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
                 Text('${gain ? '+' : '-'}${(o.$3 * 1000).round()} kcal/day', style: TextStyle(fontSize: 12, color: ac, fontWeight: FontWeight.w700)),
                 const SizedBox(height: 4),
                 Text(o.$4, style: const TextStyle(fontSize: 11.5)),

@@ -207,7 +207,7 @@ class Shell extends StatelessWidget {
       child: body,
     );
     if (wide) {
-      return LockGate(child: Ambient(child: Scaffold(backgroundColor: Colors.transparent, bottomNavigationBar: app.mod == 'profile' ? const ProfileBar() : null, body: Row(children: [_side(context), Expanded(child: animated)]))));
+      return LockGate(child: Ambient(child: Scaffold(backgroundColor: Colors.transparent, body: Row(children: [_side(context), Expanded(child: Column(children: [Expanded(child: animated), if (app.mod == 'profile') const ProfileBar()]))]))));
     }
     const bottom = ['dashboard', 'workout', 'ddiet', 'progress'];
     final idx = bottom.contains(app.mod) ? bottom.indexOf(app.mod) : 4;

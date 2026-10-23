@@ -43,10 +43,12 @@ class Profile {
   int days = 4;
   String place = 'home';
   String budget = 'std';
+  String focus = 'overall'; // overall | belly | tone
+  String dietStyle = 'std'; // std | protein | lowcarb
 
   Map<String, dynamic> toJson() => {
         'unit': unit, 'sex': sex, 'age': age, 'act': act, 'heightCm': heightCm, 'weightKg': weightKg,
-        'std': std, 'goal': goal, 'targetKg': targetKg, 'pace': pace, 'days': days, 'place': place, 'budget': budget,
+        'std': std, 'goal': goal, 'targetKg': targetKg, 'pace': pace, 'days': days, 'place': place, 'budget': budget, 'focus': focus, 'dietStyle': dietStyle,
       };
 
   void fromJson(Map<String, dynamic> j) {
@@ -63,6 +65,8 @@ class Profile {
     days = (j['days'] ?? days).toInt();
     place = j['place'] ?? place;
     budget = j['budget'] ?? budget;
+    focus = j['focus'] ?? focus;
+    dietStyle = j['dietStyle'] ?? dietStyle;
   }
 }
 
@@ -293,10 +297,10 @@ Plan computePlan(Profile p, Goal g, double h, double w, int age) {
   int kcal;
   double perWeek;
   if (g.goal == 'lose') {
-    kcal = math.max(floorKcal, (((tdee + e - g.pace * 1100) / 50).round() * 50));
+    kcal = math.max(floorKcal, (((tdee + e - g.pace * 1000) / 50).round() * 50));
     perWeek = math.max(0.1, (tdee + e - kcal) * 7 / 7700);
   } else if (g.goal == 'gain') {
-    kcal = ((tdee + e + g.pace * 1100) / 50).round() * 50;
+    kcal = ((tdee + e + g.pace * 1000) / 50).round() * 50;
     perWeek = math.max(0.1, (kcal - tdee - e) * 7 / 7700);
   } else {
     kcal = ((tdee + e) / 50).round() * 50;
@@ -307,9 +311,13 @@ Plan computePlan(Profile p, Goal g, double h, double w, int age) {
   final plan = Plan();
   plan.goal = g.goal;
   plan.timeTxt = g.goal == 'maintain' ? 'Ongoing' : 'About ${weeks <= 12 ? '$weeks weeks' : '${(weeks / 4.345).round()} months'}';
-  final pf = {'lose': 1.4, 'maintain': 1.2, 'gain': 1.7}[g.goal]!;
+  var pf = {'lose': 1.4, 'maintain': 1.2, 'gain': 1.7}[g.goal]!;
+  if (p.dietStyle == 'protein') pf += 0.4;
+  if (p.focus == 'tone' && p.dietStyle == 'std') pf += 0.2;
   plan.pG = (pf * (g.goal == 'gain' ? w : g.targetKg)).round();
-  plan.fG = (kcal * 0.27 / 9).round();
+  var fatShare = 0.27;
+  if (p.dietStyle == 'lowcarb') fatShare = 0.38;
+  plan.fG = (kcal * fatShare / 9).round();
   plan.cG = math.max(50, ((kcal - plan.pG * 4 - plan.fG * 9) / 4).round());
   plan.kcal = kcal;
   plan.perWeek = perWeek;
@@ -412,7 +420,14 @@ Diet buildDiet(Profile p, Goal g, Plan plan) {
   final diet = Diet();
   diet.meals = meals;
   diet.daily = meals.fold<double>(0, (a, m) => a + m.cost);
+  final styleTips = <String>[
+    if (p.dietStyle == 'protein') 'High protein: put daal, egg, chicken, dahi or chana on every plate. Aim for about ${plan.pG} g of protein a day.',
+    if (p.dietStyle == 'lowcarb') 'Low carb: swap wheat roti for besan or jowar roti, keep rice to a small spoon, and fill the plate with sabzi, daal and protein.',
+    if (p.focus == 'belly') 'For stubborn belly fat: cut sugary chai and cold drinks, walk 10 minutes after meals, sleep 7 to 8 hours and keep dinner light.',
+    if (p.focus == 'tone') 'For muscle tone: train with weights or bodyweight 3 or more days a week and eat your protein within 2 hours after training.',
+  ];
   diet.goalTips = [
+    ...styleTips,
     ...goalTips,
     'Eat your evening snack or dinner within 2 hours after a workout.',
     'Drink 2 to 3 litres of water a day, and a glass before each workout.',

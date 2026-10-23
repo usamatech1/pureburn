@@ -207,14 +207,16 @@ class Shell extends StatelessWidget {
       child: body,
     );
     if (wide) {
-      return LockGate(child: Ambient(child: Scaffold(backgroundColor: Colors.transparent, body: Row(children: [_side(context), Expanded(child: animated)]))));
+      return LockGate(child: Ambient(child: Scaffold(backgroundColor: Colors.transparent, bottomNavigationBar: app.mod == 'profile' ? const ProfileBar() : null, body: Row(children: [_side(context), Expanded(child: animated)]))));
     }
     const bottom = ['dashboard', 'workout', 'ddiet', 'progress'];
     final idx = bottom.contains(app.mod) ? bottom.indexOf(app.mod) : 4;
     return LockGate(child: Ambient(child: Scaffold(
       key: _shellKey,
       backgroundColor: Colors.transparent,
-      bottomNavigationBar: NavigationBar(
+      bottomNavigationBar: Column(mainAxisSize: MainAxisSize.min, children: [
+        if (app.mod == 'profile') const ProfileBar(),
+        NavigationBar(
         selectedIndex: idx,
         labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
         onDestinationSelected: (i) {
@@ -233,6 +235,7 @@ class Shell extends StatelessWidget {
           NavigationDestination(icon: Icon(Icons.menu_rounded), label: 'More'),
         ],
       ),
+      ]),
       appBar: AppBar(title: app.mod == 'dashboard' ? const BrandLockup() : Text(m.title, style: const TextStyle(fontWeight: FontWeight.w700)), backgroundColor: Colors.transparent, elevation: 0, scrolledUnderElevation: 0),
       drawer: Builder(builder: (ctx) => Drawer(width: 268, child: _side(ctx, drawer: true))),
       body: animated,

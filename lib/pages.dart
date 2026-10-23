@@ -315,6 +315,72 @@ class WeightChart extends StatelessWidget {
 }
 
 // ---------------- profile ----------------
+final profileStep = ValueNotifier<int>(0);
+bool profileStepped(BuildContext c) => MediaQuery.of(c).size.width < 1100;
+
+void submitProfile(BuildContext context) {
+  FocusScope.of(context).unfocus();
+  if (!app.d.ok) {
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+      content: Text('Check your details: age 10 to 100, height 100 to 250 cm, weight 20 to 300 kg.'),
+    ));
+    return;
+  }
+  app.save();
+  Reminders.apply();
+  profileStep.value = 0;
+  app.go('result');
+}
+
+/// Fixed bottom action bar for the Profile page.
+class ProfileBar extends StatelessWidget {
+  const ProfileBar({super.key});
+  @override
+  Widget build(BuildContext context) {
+    final stepped = profileStepped(context);
+    return Material(
+      color: Theme.of(context).scaffoldBackgroundColor.withOpacity(0.96),
+      elevation: 8,
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 980),
+              child: ValueListenableBuilder<int>(
+                valueListenable: profileStep,
+                builder: (c, st, _) {
+                  final submit = FilledButton.icon(
+                    onPressed: () { buzz(); submitProfile(context); },
+                    icon: const Icon(Icons.check_circle_outline),
+                    label: const Text('Submit and see my plan'),
+                  );
+                  if (!stepped) return SizedBox(width: double.infinity, child: submit);
+                  if (st == 0) {
+                    return SizedBox(
+                      width: double.infinity,
+                      child: FilledButton(
+                        onPressed: () { buzz(); FocusScope.of(context).unfocus(); profileStep.value = 1; },
+                        child: const Text('Next: Set your goal →'),
+                      ),
+                    );
+                  }
+                  return Row(children: [
+                    OutlinedButton(onPressed: () { buzz(); profileStep.value = 0; }, child: const Text('Back')),
+                    const SizedBox(width: 10),
+                    Expanded(child: submit),
+                  ]);
+                },
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
   @override
@@ -370,7 +436,15 @@ class _ProfilePageState extends State<ProfilePage> {
               const SizedBox(width: 14),
               Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text(d.cat, style: const TextStyle(fontWeight: FontWeight.w700)),
-                Text(d.plan != null ? 'Goal: ${d.plan!.headV}. ${d.plan!.timeTxt}, ${d.plan!.kcal} kcal a day.' : (d.gNote.isEmpty ? '' : d.gNote), style: const TextStyle(color: Color(0xFFA6A6A6), fontSize: 13)),
+                const SizedBox(height: 6),
+                if (d.plan != null)
+                  Wrap(spacing: 8, runSpacing: 6, children: [
+                    _chip(context, Icons.flag_outlined, d.plan!.headV),
+                    _chip(context, Icons.local_fire_department_outlined, '${d.plan!.kcal} kcal/day'),
+                    _chip(context, Icons.schedule, d.plan!.timeTxt.replaceFirst('About ', '')),
+                  ])
+                else if (d.gNote.isNotEmpty)
+                  Text(d.gNote, style: const TextStyle(color: Color(0xFFA6A6A6), fontSize: 13)),
               ])),
             ]),
     );
@@ -440,47 +514,95 @@ class _ProfilePageState extends State<ProfilePage> {
         if (goalNow != 'maintain') ...[
           Field('Target weight', _num(tw, app.unitLbl(), (v) { final n = _n(tw); if (n != null) { p.targetKg = (app.fromDisp(n) * 100).round() / 100; app.save(); } })),
           Align(alignment: Alignment.centerLeft, child: TextButton(onPressed: () { p.targetKg = null; app.save(); tw.text = tidy(app.toDisp(app.d.tKg)); }, child: const Text('Use my best weight'))),
-          Field('Pace', Seg<String>(opts: const [('gentle', 'Gentle'), ('steady', 'Steady'), ('fast', 'Faster')], value: p.pace, onChanged: (v) { p.pace = v; app.save(); }),
-              hint: d.g == null ? null : 'Aim for about ${app.fmtD(d.g!.pace)} per week.'),
+          Field('Pace', _paceCards(goalNow, p), hint: d.g == null ? null : 'Your plan is set for about ${app.fmtD(d.g!.pace)} per week.'),
         ],
         Field('Workout days per week', Seg<int>(opts: const [(3, '3 days'), (4, '4 days'), (5, '5 days')], value: p.days, onChanged: (v) { p.days = v; app.save(); })),
         Field('Where you exercise', Seg<String>(opts: const [('home', 'At home'), ('gym', 'At a gym')], value: p.place, onChanged: (v) { p.place = v; app.save(); })),
+        Field('Focus area (optional)', Seg<String>(opts: const [('overall', 'Overall'), ('belly', 'Belly fat'), ('tone', 'Muscle tone')], value: p.focus, onChanged: (v) { p.focus = v; app.save(); }),
+            hint: 'Overall weight loss, stubborn belly fat or muscle tone. This shapes your eating tips.'),
+        Field('Eating style', Seg<String>(opts: const [('std', 'Standard Desi'), ('protein', 'High protein'), ('lowcarb', 'Low carb')], value: p.dietStyle, onChanged: (v) { p.dietStyle = v; app.save(); }),
+            hint: p.dietStyle == 'lowcarb' ? 'Lower carbs, no wheat roti: use besan or jowar roti instead.' : p.dietStyle == 'protein' ? 'More protein in every meal.' : 'Normal roti, daal and sabzi.'),
       ]),
     );
+    final stepped = profileStepped(context);
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       live,
       _gap(),
-      LayoutBuilder(builder: (c, bc) {
-        if (bc.maxWidth > 760) {
-          return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [Expanded(child: step1), const SizedBox(width: 16), Expanded(child: step2)]);
-        }
-        return Column(children: [step1, _gap(), step2]);
-      }),
-      _gap(),
-      SizedBox(
-        width: double.infinity,
-        child: FilledButton.icon(
-          onPressed: _submit,
-          icon: const Icon(Icons.check_circle_outline),
-          label: const Text('Submit and see my plan'),
+      if (!stepped)
+        Row(crossAxisAlignment: CrossAxisAlignment.start, children: [Expanded(child: step1), const SizedBox(width: 16), Expanded(child: step2)])
+      else
+        ValueListenableBuilder<int>(
+          valueListenable: profileStep,
+          builder: (c, st, _) => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Row(children: [
+              Text('Step ${st + 1} of 2', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+              const Spacer(),
+              Text(st == 0 ? 'Your body' : 'Your goal', style: TextStyle(color: accent(context), fontWeight: FontWeight.w600, fontSize: 13)),
+            ]),
+            const SizedBox(height: 8),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: LinearProgressIndicator(value: st == 0 ? 0.5 : 1.0, minHeight: 6, color: accent(context)),
+            ),
+            const SizedBox(height: 8),
+            Muted(st == 0 ? 'Almost there. Just a few quick details and your plan is ready.' : 'Last step. Pick your goal and your plan is ready in seconds.', size: 12),
+            _gap(12),
+            AnimatedSwitcher(duration: const Duration(milliseconds: 200), child: KeyedSubtree(key: ValueKey(st), child: st == 0 ? step1 : step2)),
+          ]),
         ),
-      ),
       _gap(12),
       const Muted('Your details are saved automatically on this device.'),
     ]);
   }
 
-  void _submit() {
-    FocusScope.of(context).unfocus();
-    if (!app.d.ok) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text('Check your details: age 10 to 100, height 100 to 250 cm, weight 20 to 300 kg.'),
-      ));
-      return;
-    }
-    app.save();
-    Reminders.apply();
-    app.go('result');
+  Widget _chip(BuildContext context, IconData ic, String t) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        decoration: BoxDecoration(color: accent(context).withOpacity(0.18), borderRadius: BorderRadius.circular(20), border: Border.all(color: accent(context).withOpacity(0.5))),
+        child: Row(mainAxisSize: MainAxisSize.min, children: [
+          Icon(ic, size: 14, color: accent(context)),
+          const SizedBox(width: 5),
+          Text(t, style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: Colors.white)),
+        ]),
+      );
+
+  Widget _paceCards(String goal, Profile p) {
+    final gain = goal == 'gain';
+    final opts = [
+      ('gentle', 'Gentle', 0.25, 'Sustainable and easy'),
+      ('steady', 'Steady', gain ? 0.4 : 0.5, 'Recommended'),
+      ('fast', 'Faster', gain ? 0.5 : 0.75, gain ? 'Aggressive bulk' : 'Aggressive cut'),
+    ];
+    return Row(children: [
+      for (var i = 0; i < opts.length; i++) ...[
+        if (i > 0) const SizedBox(width: 8),
+        Expanded(child: Builder(builder: (context) {
+          final o = opts[i];
+          final on = p.pace == o.$1;
+          final ac = accent(context);
+          return InkWell(
+            borderRadius: BorderRadius.circular(14),
+            onTap: () { buzz(); p.pace = o.$1; app.save(); },
+            child: Container(
+              constraints: const BoxConstraints(minHeight: 110),
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: on ? ac.withOpacity(0.16) : null,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: on ? ac : Theme.of(context).dividerColor, width: on ? 1.6 : 1),
+              ),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(o.$2, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14)),
+                const SizedBox(height: 4),
+                Text('~${app.fmtD(o.$3)}/week', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                Text('${gain ? '+' : '-'}${(o.$3 * 1000).round()} kcal/day', style: TextStyle(fontSize: 12, color: ac, fontWeight: FontWeight.w700)),
+                const SizedBox(height: 4),
+                Text(o.$4, style: const TextStyle(fontSize: 11.5)),
+              ]),
+            ),
+          );
+        })),
+      ],
+    ]);
   }
 
   void _fromFt() {

@@ -702,60 +702,172 @@ class BmiPage extends StatelessWidget {
         const SizedBox(height: 22),
         LayoutBuilder(builder: (c, bc) {
           final w = bc.maxWidth;
+          final youLeft = (pos(d.bmi) * w - 34).clamp(0.0, w - 68);
           return SizedBox(
-            height: 74,
+            height: 108,
             child: Stack(children: [
               for (var i = 0; i < segs.length; i++)
                 Positioned(
                   left: pos(segs[i].$1) * w,
                   width: (pos(segs[i].$2) - pos(segs[i].$1)) * w - 3,
-                  top: 28,
+                  top: 34,
                   child: Container(height: 14, decoration: BoxDecoration(color: Colors.white.withOpacity(shades[i]), borderRadius: BorderRadius.circular(4))),
+                ),
+              for (final v in [d.loBmi, d.hiStart, d.obStart])
+                Positioned(
+                  left: (pos(v) * w - 18).clamp(0.0, w - 36),
+                  width: 36,
+                  top: 52,
+                  child: Text(tidy(v), textAlign: TextAlign.center, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Colors.white)),
                 ),
               for (var i = 0; i < segs.length; i++)
                 Positioned(
                   left: (pos(segs[i].$1) + pos(segs[i].$2)) / 2 * w - 28,
                   width: 56,
-                  top: 50,
+                  top: 72,
                   child: Text(segs[i].$3.toUpperCase(), textAlign: TextAlign.center, style: const TextStyle(fontSize: 9, letterSpacing: 0.8, color: Color(0xFFA6A6A6))),
                 ),
               TweenAnimationBuilder<double>(
                 tween: Tween<double>(begin: 0, end: pos(d.bmi)),
                 duration: const Duration(milliseconds: 1400),
                 curve: Curves.easeOutCubic,
-                builder: (context, v, _) => Stack(children: [Positioned(left: v * w - 1, top: 4, child: Container(width: 3, height: 44, color: Colors.white))]),
+                builder: (context, v, _) => Stack(children: [
+                  Positioned(left: v * w - 1, top: 18, child: Container(width: 3, height: 34, color: Colors.white)),
+                  Positioned(
+                    left: (v * w - 34).clamp(0.0, w - 68),
+                    top: 0,
+                    width: 68,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 2),
+                      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8)),
+                      child: Text('You ${d.bmi.toStringAsFixed(1)}', textAlign: TextAlign.center, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Colors.black)),
+                    ),
+                  ),
+                ]),
               ),
             ]),
           );
         }),
+        const SizedBox(height: 10),
+        Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Expanded(
+            child: Text(
+              app.p.std == 'asia'
+                  ? 'South Asian scale: health risk starts from BMI ${tidy(d.hiStart)}, lower than the WHO scale (25).'
+                  : 'WHO general scale: overweight starts from BMI ${tidy(d.hiStart)}.',
+              style: const TextStyle(color: Color(0xFFA6A6A6), fontSize: 12.5, height: 1.4),
+            ),
+          ),
+          TextButton(onPressed: () => app.go('profile'), child: const Text('Change scale')),
+        ]),
       ]),
     );
     final range = '${tidy(app.toDisp(d.minKg))} to ${app.fmtW(d.maxKg)}';
+    final hm = d.h / 100;
+    final bmiSeries = [for (final w in app.weights) w.kg / (hm * hm)];
+    final onTarget = d.changeV == 'On target';
+    final summary = Box(
+      child: Row(children: [
+        Icon(onTarget ? Icons.check_circle_outline : Icons.flag_outlined, color: accent(context), size: 28),
+        const SizedBox(width: 14),
+        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(onTarget ? 'You are in your healthy range' : '${d.changeV} to reach your best weight', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+          const SizedBox(height: 2),
+          Muted(d.changeS, size: 12.5),
+        ])),
+      ]),
+    );
+    final two = [
+      Stat('Best weight', app.fmtW(d.target), s: 'Ideal target for your height', inverse: true),
+      Stat('Healthy range', range, s: 'BMI 18.5 to ${d.hiBmi.toStringAsFixed(1)}'),
+    ];
+    final whtr = app.measures.isNotEmpty && app.measures.last.waist > 0 ? app.measures.last.waist / app.p.heightCm : 0.0;
+    final waistCard = Box(
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        const Eyebrow('Belly fat check'),
+        const SizedBox(height: 8),
+        if (whtr == 0) ...[
+          Text('Keep your waist under ${tidy(app.p.heightCm / 2)} cm', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+          const SizedBox(height: 4),
+          const Muted('BMI cannot see belly fat. For South Asians, a waist under half your height is a better risk check. Measure at the navel.', size: 12.5),
+          const SizedBox(height: 10),
+          OutlinedButton.icon(onPressed: () => app.go('measure'), icon: const Icon(Icons.straighten), label: const Text('Add my waist')),
+        ] else ...[
+          Row(children: [
+            Text(whtr.toStringAsFixed(2), style: const TextStyle(fontSize: 34, fontWeight: FontWeight.w300, letterSpacing: -1)),
+            const SizedBox(width: 12),
+            _chipTag(context, whtr < 0.5 ? 'Healthy' : whtr < 0.6 ? 'Raised' : 'High', color: whtr < 0.5 ? const Color(0xFF2E9E6B) : const Color(0xFFC0392B)),
+          ]),
+          const SizedBox(height: 6),
+          Muted('Waist ${tidy(app.measures.last.waist)} cm. Aim under ${tidy(app.p.heightCm / 2)} cm (half your height).', size: 12.5),
+          const SizedBox(height: 8),
+          TextButton(onPressed: () => app.go('measure'), child: const Text('Update waist')),
+        ],
+      ]),
+    );
+    final trend = Box(
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        const Eyebrow('Your BMI over time'),
+        const SizedBox(height: 10),
+        if (bmiSeries.length < 2) ...[
+          const Muted('Log your weight on two different days to see how your BMI changes.', size: 12.5),
+          const SizedBox(height: 10),
+          OutlinedButton.icon(onPressed: () => app.go('progress'), icon: const Icon(Icons.monitor_weight_outlined), label: const Text('Log my weight')),
+        ] else ...[
+          SizedBox(
+            height: 160,
+            width: double.infinity,
+            child: TweenAnimationBuilder<double>(
+              tween: Tween<double>(begin: 0, end: 1),
+              duration: const Duration(milliseconds: 1400),
+              curve: Curves.easeInOut,
+              builder: (context, t, _) => CustomPaint(painter: LineChart(bmiSeries, d.hiBmi, fg(context), line(context), t)),
+            ),
+          ),
+          const SizedBox(height: 6),
+          Muted('From ${bmiSeries.first.toStringAsFixed(1)} to ${bmiSeries.last.toStringAsFixed(1)}. The line marks BMI ${d.hiBmi.toStringAsFixed(1)}, the top of your healthy range.', size: 12),
+        ],
+      ]),
+    );
+    final formulas = Box(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
+      child: Theme(
+        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          tilePadding: EdgeInsets.zero,
+          childrenPadding: const EdgeInsets.only(bottom: 12),
+          title: const Text('How your best weight is calculated', style: TextStyle(fontWeight: FontWeight.w700)),
+          subtitle: Muted('Average of 4 formulas: ${app.fmtW(d.avg)}', size: 12),
+          children: [
+            for (final f in d.formulas) _trow(f.key, app.fmtW(f.value)),
+            const Divider(),
+            _trow('Average', app.fmtW(d.avg), bold: true),
+          ],
+        ),
+      ),
+    );
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       hero,
       _gap(),
-      _grid([
-        Stat('Best weight', app.fmtW(d.target), s: 'Ideal target for your height', inverse: true),
-        Stat('Healthy range', range, s: 'BMI 18.5 to ${d.hiBmi.toStringAsFixed(1)}'),
-        Stat('To reach best weight', d.changeV, s: d.changeS),
-      ], min: 220),
+      if (d.blocked != null) ...[_blocked(d), _gap()],
+      summary,
       _gap(),
-      if (d.plan != null) ...[
-        if (d.gNote.isNotEmpty) Box(child: Text(d.gNote)),
-        if (d.gNote.isNotEmpty) _gap(),
-        _glance(context, d),
-      ] else
-        _blocked(d),
+      LayoutBuilder(builder: (c, bc) => bc.maxWidth >= 520
+          ? Row(crossAxisAlignment: CrossAxisAlignment.start, children: [Expanded(child: two[0]), const SizedBox(width: 12), Expanded(child: two[1])])
+          : Column(children: [two[0], _gap(12), two[1]])),
+      if (d.gNote.isNotEmpty) ...[_gap(), Box(child: Text(d.gNote))],
       _gap(),
-      Box(
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          const Eyebrow('Ideal weight formula'),
-          const SizedBox(height: 10),
-          for (final f in d.formulas) _trow(f.key, app.fmtW(f.value)),
-          const Divider(),
-          _trow('Average', app.fmtW(d.avg), bold: true),
-        ]),
-      ),
+      Wrap(spacing: 10, runSpacing: 10, children: [
+        if (d.plan != null)
+          FilledButton.icon(onPressed: () { buzz(); app.go('result'); }, icon: const Icon(Icons.arrow_forward_rounded), label: const Text('See my plan')),
+        OutlinedButton.icon(onPressed: () { buzz(); app.go('progress'); }, icon: const Icon(Icons.monitor_weight_outlined), label: const Text('Update my weight')),
+      ]),
+      _gap(),
+      LayoutBuilder(builder: (c, bc) => bc.maxWidth >= 720
+          ? Row(crossAxisAlignment: CrossAxisAlignment.start, children: [Expanded(child: trend), const SizedBox(width: 12), Expanded(child: waistCard)])
+          : Column(children: [trend, _gap(12), waistCard])),
+      _gap(),
+      formulas,
       _gap(),
       if (d.h < 140) const Muted('Below 140 cm the ideal weight formulas are less reliable. Rely more on the BMI-based healthy range.'),
       const Muted('PureBurn is a general guide only. BMI is not accurate for athletes or pregnant women. Please talk to a doctor before making health decisions.'),

@@ -345,7 +345,8 @@ class ProfileBar extends StatelessWidget {
         top: false,
         child: Padding(
           padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
-          child: Center(
+          child: Align(
+            heightFactor: 1,
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 980),
               child: ValueListenableBuilder<int>(

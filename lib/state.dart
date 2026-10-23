@@ -404,12 +404,12 @@ class AppState extends ChangeNotifier {
     for (final e in food[date] ?? const <FoodEntry>[]) {
       final fd = findFood(e.id, customFoods);
       if (fd == null) continue;
-      final k = (fd.kcal * e.servings).round();
+      final k = e.custom ? e.kcalT!.round() : (fd.kcal * e.servings).round();
       i.kcal += k;
       i.dK += k;
-      i.p += fd.p * e.servings;
-      i.c += fd.c * e.servings;
-      i.f += fd.f * e.servings;
+      i.p += e.custom ? (e.pT ?? 0) : fd.p * e.servings;
+      i.c += e.custom ? (e.cT ?? 0) : fd.c * e.servings;
+      i.f += e.custom ? (e.fT ?? 0) : fd.f * e.servings;
       i.cost += fd.price * e.servings;
     }
     i.total = i.exT + i.mT + 1;
@@ -522,9 +522,31 @@ class Achv {
 class FoodEntry {
   final String id, slot;
   final double servings;
-  FoodEntry(this.id, this.servings, this.slot);
-  Map<String, dynamic> toJson() => {'id': id, 's': servings, 'slot': slot};
-  static FoodEntry fromJson(Map<String, dynamic> j) => FoodEntry(j['id'] as String, ((j['s'] ?? 1) as num).toDouble(), (j['slot'] ?? 'Snack') as String);
+  // Set when the food was customised (roti flour and ghee, salan oil level, chai recipe).
+  // Then these are the totals for the whole entry and the base food values are not used.
+  final String? label;
+  final double? kcalT, pT, cT, fT;
+  final int clean; // effect on the Clean Burn Score
+  FoodEntry(this.id, this.servings, this.slot, {this.label, this.kcalT, this.pT, this.cT, this.fT, this.clean = 0});
+  bool get custom => kcalT != null;
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        's': servings,
+        'slot': slot,
+        if (label != null) 'lb': label,
+        if (kcalT != null) 'k': kcalT,
+        if (pT != null) 'p': pT,
+        if (cT != null) 'c': cT,
+        if (fT != null) 'f': fT,
+        if (clean != 0) 'cs': clean,
+      };
+  static FoodEntry fromJson(Map<String, dynamic> j) => FoodEntry(j['id'] as String, ((j['s'] ?? 1) as num).toDouble(), (j['slot'] ?? 'Snack') as String,
+      label: j['lb'] as String?,
+      kcalT: (j['k'] as num?)?.toDouble(),
+      pT: (j['p'] as num?)?.toDouble(),
+      cT: (j['c'] as num?)?.toDouble(),
+      fT: (j['f'] as num?)?.toDouble(),
+      clean: ((j['cs'] ?? 0) as num).toInt());
 }
 
 class SetLog {

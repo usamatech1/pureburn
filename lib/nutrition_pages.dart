@@ -1,6 +1,7 @@
 // Food diary, macro dashboard, meal swap, diet preferences, Ramadan mode and shopping list.
 import 'package:flutter/material.dart' hide Text;
 import 'package:flutter/services.dart';
+import 'desi.dart';
 import 'dietfit.dart';
 import 'foods.dart';
 import 'i18n.dart';
@@ -93,6 +94,15 @@ class _FoodDiaryPageState extends State<FoodDiaryPage> {
     var slot = 'Snack';
     final h = DateTime.now().hour;
     slot = h < 11 ? 'Breakfast' : h < 16 ? 'Lunch' : h < 19 ? 'Snack' : 'Dinner';
+    final kind = desiKind(f);
+    if (kind != null) {
+      final e = await showDesiSheet(context, f, kind, slot);
+      if (e != null) {
+        app.addFood(app.selDate, e);
+        _snack(context, 'Added to your food diary.');
+      }
+      return;
+    }
     final ok = await showDialog<bool>(
       context: context,
       builder: (c) => StatefulBuilder(
@@ -192,6 +202,38 @@ class _FoodDiaryPageState extends State<FoodDiaryPage> {
       const WeekStrip(),
       MacroDash(info),
       _g(),
+      const CleanScoreCard(),
+      for (final t in swapTips(date)) ...[
+        _g(12),
+        Box(
+          child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            const Padding(padding: EdgeInsets.only(top: 2, right: 12), child: Icon(Icons.tips_and_updates_outlined, size: 22)),
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                const Eyebrow('Clean Burn tip'),
+                const SizedBox(height: 4),
+                Text(t.text, style: const TextStyle(height: 1.45)),
+                if (t.action != null) ...[
+                  const SizedBox(height: 8),
+                  OutlinedButton(
+                    onPressed: () {
+                      buzz();
+                      applySwap(date, t);
+                    },
+                    child: Text(t.action!),
+                  ),
+                ],
+              ]),
+            ),
+            IconButton(
+              tooltip: 'Dismiss',
+              onPressed: () => setState(() => dismissTip(t)),
+              icon: const Icon(Icons.close, size: 18),
+            ),
+          ]),
+        ),
+      ],
+      _g(),
       Box(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           const H2('Add food'),
@@ -216,8 +258,16 @@ class _FoodDiaryPageState extends State<FoodDiaryPage> {
                   ),
                   if (f.mine) const Padding(padding: EdgeInsets.only(right: 8), child: Pill('Mine')),
                   Text('${f.kcal} kcal', style: const TextStyle(fontSize: 13)),
-                  const SizedBox(width: 6),
-                  const Icon(Icons.add_circle_outline, size: 20),
+                  IconButton(
+                    tooltip: 'Quick add 1 serving',
+                    onPressed: () {
+                      buzz();
+                      final hh = DateTime.now().hour;
+                      app.addFood(app.selDate, FoodEntry(f.id, 1, hh < 11 ? 'Breakfast' : hh < 16 ? 'Lunch' : hh < 19 ? 'Snack' : 'Dinner'));
+                      _snack(context, 'Added 1 × ${f.name}. Tap the food to customise it.');
+                    },
+                    icon: const Icon(Icons.add_circle_outline, size: 22),
+                  ),
                 ]),
               ),
             ),
@@ -241,8 +291,8 @@ class _FoodDiaryPageState extends State<FoodDiaryPage> {
                     padding: const EdgeInsets.fromLTRB(14, 4, 4, 4),
                     decoration: BoxDecoration(border: Border.all(color: line(context)), borderRadius: BorderRadius.circular(14)),
                     child: Row(children: [
-                      Expanded(child: Text('${fmtS(entries[i].servings)} × ${findFood(entries[i].id, app.customFoods)!.name}', style: const TextStyle(fontSize: 13.5))),
-                      Text('${(findFood(entries[i].id, app.customFoods)!.kcal * entries[i].servings).round()} kcal', style: const TextStyle(fontSize: 13)),
+                      Expanded(child: Text(entries[i].label ?? '${fmtS(entries[i].servings)} × ${findFood(entries[i].id, app.customFoods)!.name}', style: const TextStyle(fontSize: 13.5))),
+                      Text('${entries[i].custom ? entries[i].kcalT!.round() : (findFood(entries[i].id, app.customFoods)!.kcal * entries[i].servings).round()} kcal', style: const TextStyle(fontSize: 13)),
                       IconButton(onPressed: () => app.removeFood(date, i), icon: const Icon(Icons.close, size: 18)),
                     ]),
                   ),

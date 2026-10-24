@@ -392,12 +392,13 @@ class AppState extends ChangeNotifier {
       i.mT = d.diet!.meals.length;
       for (final m in d.diet!.meals) {
         if (L != null && L.meal.contains(m.id)) {
+          final pf = L.pm[m.id] ?? 1.0;
           i.mD++;
-          i.kcal += m.kcal;
-          i.cost += m.cost;
-          i.p += m.mp;
-          i.c += m.mc;
-          i.f += m.mf;
+          i.kcal += (m.kcal * pf).round();
+          i.cost += m.cost * pf;
+          i.p += m.mp * pf;
+          i.c += m.mc * pf;
+          i.f += m.mf * pf;
         }
       }
     }
@@ -462,6 +463,22 @@ class AppState extends ChangeNotifier {
     } else {
       set.removeAll(ids);
     }
+    save();
+  }
+
+  void setPortion(String mealId, double f) {
+    final L = log(selDate);
+    if (f == 1.0) {
+      L.pm.remove(mealId);
+    } else {
+      L.pm[mealId] = f;
+    }
+    save();
+  }
+
+  void addWater(int glasses) {
+    final L = log(selDate);
+    L.water = (L.water + glasses).clamp(0, 40);
     save();
   }
 

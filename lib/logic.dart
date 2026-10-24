@@ -77,7 +77,8 @@ class DayLog {
   int steps = 0;
   double sleep = 0; // hours slept the night before
   int sleepQ = 0; // 1 to 5
-  Map<String, dynamic> toJson() => {'ex': ex.toList(), 'meal': meal.toList(), 'water': water, 'steps': steps, 'sleep': sleep, 'sleepQ': sleepQ};
+  Map<String, double> pm = {}; // portion size of each planned meal, 1.0 is as planned
+  Map<String, dynamic> toJson() => {'ex': ex.toList(), 'meal': meal.toList(), 'water': water, 'steps': steps, 'sleep': sleep, 'sleepQ': sleepQ, if (pm.isNotEmpty) 'pm': pm};
   static DayLog fromJson(Map<String, dynamic> j) {
     final d = DayLog();
     d.ex = Set<String>.from((j['ex'] ?? []) as List);
@@ -86,6 +87,8 @@ class DayLog {
     d.steps = (j['steps'] ?? 0).toInt();
     d.sleep = ((j['sleep'] ?? 0) as num).toDouble();
     d.sleepQ = ((j['sleepQ'] ?? 0) as num).toInt();
+    final pmj = j['pm'];
+    if (pmj is Map) d.pm = {for (final e in pmj.entries) '${e.key}': (e.value as num).toDouble()};
     return d;
   }
 }

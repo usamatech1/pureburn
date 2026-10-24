@@ -13,6 +13,7 @@ import 'health_pages.dart';
 import 'services.dart';
 import 'ui.dart';
 import 'dex_extras.dart';
+import 'diet_extras.dart';
 
 class ModuleView extends StatelessWidget {
   final String id;
@@ -1140,8 +1141,11 @@ class DdietPage extends StatelessWidget {
     final date = app.selDate;
     final L = app.logs[date];
     final info = app.dayInfo(date);
+    final allDone = info.mT > 0 && info.mD == info.mT;
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       WeekStrip(),
+      Align(alignment: Alignment.centerLeft, child: streakChip(context)),
+      _gap(12),
       Box(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
@@ -1153,6 +1157,8 @@ class DdietPage extends StatelessWidget {
           Bar(info.kcal / d.plan!.kcal),
           const SizedBox(height: 6),
           Muted('Food cost so far ${rs(info.cost, 5)} of about ${rs(d.diet!.daily, 5)} for the day', size: 12),
+          const SizedBox(height: 16),
+          MacroMeters(info: info, plan: d.plan!),
         ]),
       ),
       _gap(),
@@ -1160,20 +1166,33 @@ class DdietPage extends StatelessWidget {
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           _budget(),
           for (final m in d.diet!.meals)
-            TaskRow(
-              done: L != null && L.meal.contains(m.id),
-              onChanged: (v) => app.tick('meal', m.id, v),
-              body: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(m.name, style: const TextStyle(fontWeight: FontWeight.w600)),
-                Muted(m.time, size: 12),
-                const SizedBox(height: 4),
-                Bullets(m.items),
-                Align(alignment: AlignmentDirectional.centerStart, child: TextButton.icon(onPressed: () => showSwapSheet(context, m), icon: const Icon(Icons.swap_horiz, size: 18), label: const Text('Swap'))),
-              ]),
-              trailing: Column(crossAxisAlignment: CrossAxisAlignment.end, children: [Pill('~${m.kcal} kcal'), const SizedBox(height: 6), Pill(rs(m.cost, 5))]),
-            ),
+            Builder(builder: (context) {
+              final pf = L?.pm[m.id] ?? 1.0;
+              return TaskRow(
+                done: L != null && L.meal.contains(m.id),
+                onChanged: (v) { buzz(); app.tick('meal', m.id, v); },
+                body: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(m.name, style: const TextStyle(fontWeight: FontWeight.w600)),
+                  Muted(m.time, size: 12),
+                  const SizedBox(height: 4),
+                  Bullets(m.items),
+                  const SizedBox(height: 6),
+                  Wrap(spacing: 6, runSpacing: 6, children: [
+                    Pill('P ${(m.mp * pf).round()}g'),
+                    Pill('C ${(m.mc * pf).round()}g'),
+                    Pill('F ${(m.mf * pf).round()}g'),
+                  ]),
+                  Wrap(crossAxisAlignment: WrapCrossAlignment.center, spacing: 4, children: [
+                    PortionStepper(mealId: m.id, value: pf),
+                    TextButton.icon(onPressed: () => showSwapSheet(context, m), icon: const Icon(Icons.swap_horiz, size: 18), label: const Text('Swap')),
+                  ]),
+                  if (pf != 1.0) Muted('Portion changed. Calories and macros below are scaled.', size: 11.5),
+                ]),
+                trailing: Column(crossAxisAlignment: CrossAxisAlignment.end, children: [Pill('~${(m.kcal * pf).round()} kcal'), const SizedBox(height: 6), Pill(rs(m.cost * pf, 5))]),
+              );
+            }),
           Wrap(spacing: 10, children: [
-            FilledButton(onPressed: () => app.markAll('meal', true), child: const Text('I ate everything')),
+            FilledButton(onPressed: () { buzz(); app.markAll('meal', true); }, child: const Text('I ate everything')),
             OutlinedButton(onPressed: () => app.markAll('meal', false), child: const Text('Clear')),
           ]),
         ]),
@@ -1182,26 +1201,38 @@ class DdietPage extends StatelessWidget {
       Box(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           const H2('Water'),
-          Muted('${info.water} of ${info.wg} glasses (250 ml each). Tap a glass to fill up to it.'),
+          const SizedBox(height: 4),
+          Muted('${info.water} of ${info.wg} glasses (250 ml each). Goal ${(info.wg * 0.25).toStringAsFixed(info.wg % 4 == 0 ? 0 : 2).replaceFirst(RegExp(r'0$'), '')} litres.', size: 12.5),
           const SizedBox(height: 12),
-          Wrap(spacing: 8, runSpacing: 8, children: [
-            for (var i = 0; i < info.wg; i++)
-              InkWell(
-                borderRadius: BorderRadius.circular(12),
-                onTap: () => app.setWater(i),
-                child: Container(
-                  width: 44,
-                  height: 52,
-                  decoration: BoxDecoration(
-                    color: i < info.water ? fg(context) : soft(context),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: i < info.water ? fg(context) : Theme.of(context).colorScheme.outline, width: 1.5),
-                  ),
-                ),
-              ),
+          Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
+            WaterBottle(glasses: info.water, goal: info.wg),
+            const SizedBox(width: 18),
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                FilledButton.icon(onPressed: () { buzz(); app.addWater(1); }, icon: const Icon(Icons.water_drop_outlined), label: const Text('+250 ml  (glass)')),
+                const SizedBox(height: 8),
+                FilledButton.tonalIcon(onPressed: () { buzz(); app.addWater(2); }, icon: const Icon(Icons.local_drink_outlined), label: const Text('+500 ml  (bottle)')),
+                const SizedBox(height: 8),
+                OutlinedButton.icon(onPressed: info.water == 0 ? null : () { app.addWater(-1); }, icon: const Icon(Icons.undo), label: const Text('Undo 250 ml')),
+              ]),
+            ),
           ]),
+          const SizedBox(height: 8),
+          const Muted('Want a nudge? Turn on water reminders in Settings.', size: 12),
         ]),
       ),
+      _gap(),
+      Box(child: QuickAdd(date: date, onMore: () => app.go('foods'))),
+      _gap(),
+      Box(
+        child: Row(children: [
+          const Icon(Icons.shopping_basket_outlined),
+          const SizedBox(width: 12),
+          const Expanded(child: Text('Weekly grocery list from your meals', style: TextStyle(fontWeight: FontWeight.w600))),
+          TextButton(onPressed: () => app.go('shop'), child: const Text('Open')),
+        ]),
+      ),
+      if (allDone) ...[_gap(), DayWrap(info: info, plan: d.plan!)],
       _gap(),
       _dietRecord(context),
     ]);

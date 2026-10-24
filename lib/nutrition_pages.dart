@@ -10,6 +10,7 @@ import 'main.dart' show app;
 import 'pages.dart' show WeekStrip, WeekBars;
 import 'state.dart';
 import 'ui.dart';
+import 'diet_extras.dart';
 
 Widget _g([double h = 16]) => SizedBox(height: h);
 
@@ -560,6 +561,12 @@ class _ShoppingPageState extends State<ShoppingPage> {
           },
           icon: const Icon(Icons.copy_all_outlined),
           label: const Text('Copy list'),
+        ),
+        FilledButton.icon(
+          style: FilledButton.styleFrom(backgroundColor: const Color(0xFF1FA855), foregroundColor: Colors.white),
+          onPressed: () => shareWhatsApp(context, text()),
+          icon: const Icon(Icons.send_rounded),
+          label: const Text('Share on WhatsApp'),
         ),
         OutlinedButton(
           onPressed: () {

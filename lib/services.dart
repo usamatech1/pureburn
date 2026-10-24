@@ -66,7 +66,7 @@ class Reminders {
     return tz.TZDateTime.from(t, tz.UTC);
   }
 
-  static bool get anyOn => app.set['water'] == true || app.set['wk'] == true || app.set['meals'] == true;
+  static bool get anyOn => app.set['water'] == true || app.set['wk'] == true || app.set['meals'] == true || app.set['bed'] == true;
 
   static Future<void> apply() async {
     if (!onAndroid) return;
@@ -88,6 +88,17 @@ class Reminders {
             matchDateTimeComponents: DateTimeComponents.time,
           );
         }
+      }
+      if (s['bed'] == true) {
+        await _p.zonedSchedule(
+          id: 400,
+          title: tr('Time to wind down'),
+          body: tr('Put your phone away and dim the lights. Your sleep helps you burn fat and recover.'),
+          scheduledDate: _next(((s['bedH'] ?? 22) as num).toInt(), ((s['bedM'] ?? 30) as num).toInt()),
+          notificationDetails: _nd,
+          androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+          matchDateTimeComponents: DateTimeComponents.time,
+        );
       }
       final d = app.d;
       if (s['wk'] == true && d.ok && d.plan != null) {

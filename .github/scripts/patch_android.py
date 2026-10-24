@@ -15,6 +15,7 @@ perms = [
     "android.permission.ACTIVITY_RECOGNITION",
     "android.permission.USE_BIOMETRIC",
     "android.permission.health.READ_STEPS",
+    "android.permission.health.READ_SLEEP",
 ]
 add = "".join(f'    <uses-permission android:name="{p}" />\n' for p in perms if p not in man)
 if add:

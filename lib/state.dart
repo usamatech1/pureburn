@@ -107,7 +107,7 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  static const prefKeys = ['dietType', 'allergies', 'ramadan', 'sehri', 'iftar', 'level', 'restSec', 'sleepGoal', 'health', 'healthOk', 'hread', 'haptics'];
+  static const prefKeys = ['dietType', 'allergies', 'ramadan', 'sehri', 'iftar', 'level', 'restSec', 'sleepGoal', 'health', 'healthOk', 'hread', 'haptics', 'feel'];
 
   SharedPreferences? get prefs => _sp;
 

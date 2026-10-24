@@ -12,6 +12,7 @@ import 'cloud_pages.dart';
 import 'health_pages.dart';
 import 'services.dart';
 import 'ui.dart';
+import 'dex_extras.dart';
 
 class ModuleView extends StatelessWidget {
   final String id;
@@ -1039,16 +1040,48 @@ class DexPage extends StatelessWidget {
           const SizedBox(height: 4),
           Muted('$done of ${st.tasks.length} done'),
           const SizedBox(height: 14),
-          for (final t in st.tasks)
-            TaskRow(done: L != null && L.ex.contains(t.id), onChanged: (v) => app.tick('ex', t.id, v), body: Text(t.text, style: const TextStyle(height: 1.35))),
-          if (st.notes.isNotEmpty) ...[const SizedBox(height: 8), const Text('How to do it', style: TextStyle(fontWeight: FontWeight.w600)), const SizedBox(height: 6), Bullets(st.notes)],
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton(
+              style: FilledButton.styleFrom(minimumSize: const Size(0, 54), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)), textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+              onPressed: () { buzz(); app.go('workout'); },
+              child: const Row(mainAxisAlignment: MainAxisAlignment.center, mainAxisSize: MainAxisSize.min, children: [
+                Icon(Icons.play_arrow_rounded),
+                SizedBox(width: 8),
+                Text('Start session'),
+              ]),
+            ),
+          ),
+          const SizedBox(height: 6),
+          const Muted('Opens the workout player with timers, sets and reps.', size: 12),
           const SizedBox(height: 14),
+          for (final t in st.tasks)
+            TaskRow(
+              done: L != null && L.ex.contains(t.id),
+              onChanged: (v) => app.tick('ex', t.id, v),
+              body: Text(t.text, style: const TextStyle(height: 1.35)),
+              trailing: taskMinutes(t.text) == null
+                  ? null
+                  : TaskTimer(
+                      key: ValueKey('${date}_${t.id}'),
+                      minutes: taskMinutes(t.text)!,
+                      done: L != null && L.ex.contains(t.id),
+                      onFinished: () => app.tick('ex', t.id, true),
+                    ),
+            ),
+          if (st.notes.isNotEmpty) ...[const SizedBox(height: 8), const Text('How to do it', style: TextStyle(fontWeight: FontWeight.w600)), const SizedBox(height: 6), Bullets(st.notes)],
+          const SizedBox(height: 4),
+          TextButton.icon(onPressed: () => openDemo(context, row.name), icon: const Icon(Icons.ondemand_video_outlined, size: 18), label: const Text('Watch a form demo')),
+          const SizedBox(height: 10),
           Wrap(spacing: 10, children: [
-            FilledButton(onPressed: () => app.markAll('ex', true), child: const Text('Mark everything done')),
+            FilledButton(onPressed: () { buzz(); app.markAll('ex', true); }, child: const Text('Mark everything done')),
             OutlinedButton(onPressed: () => app.markAll('ex', false), child: const Text('Clear')),
           ]),
         ]),
       );
+      if (done == st.tasks.length) {
+        main = Column(crossAxisAlignment: CrossAxisAlignment.start, children: [main, _gap(), SessionSummary(row: row, date: date)]);
+      }
     } else {
       main = Box(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -1059,24 +1092,19 @@ class DexPage extends StatelessWidget {
           const Muted('Your muscles grow and recover on rest days. Keep moving gently if you feel like it.', size: 14),
           const SizedBox(height: 14),
           TaskRow(done: L != null && L.ex.contains('r0'), onChanged: (v) => app.tick('ex', 'r0', v), body: const Text('Easy 20 to 30 minute walk (optional)')),
-          TaskRow(done: L != null && L.ex.contains('r1'), onChanged: (v) => app.tick('ex', 'r1', v), body: const Text('10 minutes of stretching (optional)')),
+          TaskRow(done: L != null && L.ex.contains('r1'), onChanged: (v) => app.tick('ex', 'r1', v), body: const Text('10 minutes of light stretching: neck, shoulders, back, hips, hamstrings (optional)')),
+          TaskRow(done: L != null && L.ex.contains('r2'), onChanged: (v) => app.tick('ex', 'r2', v), body: const Text('5 to 10 minutes of mobility: arm circles, hip circles, cat-cow (optional)')),
+          TaskRow(done: L != null && L.ex.contains('r3'), onChanged: (v) => app.tick('ex', 'r3', v), body: Text('Drink ${info.wg} glasses of water today')),
         ]),
       );
     }
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       WeekStrip(),
+      Align(alignment: Alignment.centerLeft, child: streakChip(context)),
+      _gap(12),
       main,
       _gap(),
-      Box(
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          const H2('Steps'),
-          _StepsField(key: ValueKey(date), initial: info.steps),
-          const SizedBox(height: 12),
-          Bar(info.steps / d.stepGoal),
-          const SizedBox(height: 6),
-          Muted('Goal ${d.stepGoal} a day'),
-        ]),
-      ),
+      StepsCard(date: date, steps: info.steps, goal: d.stepGoal),
       _gap(),
       _exerciseRecord(context),
     ]);
@@ -1613,36 +1641,59 @@ class WeekBars extends StatelessWidget {
   final List<String> dates;
   final List<double> fracs;
   final List<String> labels;
-  const WeekBars({super.key, required this.dates, required this.fracs, required this.labels});
+  final List<String>? tips; // full tooltip text per bar
+  final double? goalFrac; // dashed goal line, as a fraction of the bar height
+  final List<bool>? hit; // bars that reached the goal are drawn green
+  const WeekBars({super.key, required this.dates, required this.fracs, required this.labels, this.tips, this.goalFrac, this.hit});
   @override
   Widget build(BuildContext context) {
+    final ac = accent(context);
+    const barH = 90.0;
     return SizedBox(
       height: 150,
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.end,
-        children: List.generate(dates.length, (i) => Expanded(
+        children: List.generate(dates.length, (i) {
+          final ok = hit != null && hit![i];
+          final c1 = ok ? const Color(0xFF2E9E6B) : ac;
+          final c2 = ok ? const Color(0xFF7BD3A8) : ac.withOpacity(0.55);
+          return Expanded(
+            child: Tooltip(
+              message: tips != null ? tips![i] : labels[i],
+              triggerMode: TooltipTriggerMode.tap,
               child: Column(mainAxisAlignment: MainAxisAlignment.end, children: [
                 Text(labels[i], style: TextStyle(fontSize: 9.5, color: muted(context))),
                 const SizedBox(height: 4),
-                Container(
-                  width: 22,
-                  height: 90,
-                  alignment: Alignment.bottomCenter,
-                  decoration: BoxDecoration(color: soft(context), borderRadius: BorderRadius.circular(8)),
-                  child: TweenAnimationBuilder<double>(
-                    tween: Tween<double>(begin: 0, end: (fracs[i].isNaN ? 0.0 : fracs[i]).clamp(0.0, 1.0)),
-                    duration: Duration(milliseconds: 600 + i * 110),
-                    curve: Curves.easeOutCubic,
-                    builder: (context, h, _) => FractionallySizedBox(
-                      heightFactor: h,
-                      child: Container(decoration: BoxDecoration(color: fg(context), borderRadius: BorderRadius.circular(8))),
+                Stack(clipBehavior: Clip.none, alignment: Alignment.bottomCenter, children: [
+                  Container(
+                    width: 22,
+                    height: barH,
+                    alignment: Alignment.bottomCenter,
+                    decoration: BoxDecoration(color: soft(context), borderRadius: BorderRadius.circular(8)),
+                    child: TweenAnimationBuilder<double>(
+                      tween: Tween<double>(begin: 0, end: (fracs[i].isNaN ? 0.0 : fracs[i]).clamp(0.0, 1.0)),
+                      duration: Duration(milliseconds: 600 + i * 110),
+                      curve: Curves.easeOutCubic,
+                      builder: (context, h, _) => FractionallySizedBox(
+                        heightFactor: h,
+                        child: Container(decoration: BoxDecoration(gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [c1, c2]), borderRadius: BorderRadius.circular(8))),
+                      ),
                     ),
                   ),
-                ),
+                  if (goalFrac != null)
+                    Positioned(
+                      bottom: goalFrac! * barH - 1,
+                      left: -5,
+                      right: -5,
+                      child: SizedBox(height: 2, child: CustomPaint(painter: DashLine(fg(context).withOpacity(0.55)))),
+                    ),
+                ]),
                 const SizedBox(height: 6),
                 Text(dayName(parseIso(dates[i])).substring(0, 3).toUpperCase(), style: TextStyle(fontSize: 9.5, color: muted(context))),
               ]),
-            )),
+            ),
+          );
+        }),
       ),
     );
   }
@@ -1681,6 +1732,8 @@ Widget _exerciseRecord(BuildContext context) {
           dates: wk,
           fracs: [for (final x in infos) x.exT > 0 ? x.exD / x.exT : 0.0],
           labels: [for (final x in infos) x.exT > 0 ? '${x.exD}/${x.exT}' : 'Rest'],
+          tips: [for (var i = 0; i < infos.length; i++) infos[i].exT > 0 ? '${wk[i]}: ${infos[i].exD} of ${infos[i].exT} tasks done' : '${wk[i]}: rest day'],
+          hit: [for (final x in infos) x.exT > 0 && x.exD == x.exT],
         ),
       ]),
     ),
@@ -1690,11 +1743,14 @@ Widget _exerciseRecord(BuildContext context) {
         const H2('Steps each day'),
         WeekBars(
           dates: wk,
-          fracs: [for (final x in infos) d.stepGoal > 0 ? x.steps / d.stepGoal : 0.0],
+          fracs: [for (final x in infos) d.stepGoal > 0 ? x.steps / (d.stepGoal * 1.25) : 0.0],
           labels: [for (final x in infos) x.steps == 0 ? '-' : '${x.steps}'],
+          tips: [for (var i = 0; i < infos.length; i++) '${wk[i]}: ${infos[i].steps} steps${infos[i].steps >= d.stepGoal ? ' (goal reached)' : ''}'],
+          goalFrac: 0.8,
+          hit: [for (final x in infos) d.stepGoal > 0 && x.steps >= d.stepGoal],
         ),
         const SizedBox(height: 6),
-        Muted('Goal ${d.stepGoal} a day', size: 12),
+        Muted('The dashed line is your goal of ${d.stepGoal} steps. Green bars reached it. Tap a bar for details.', size: 12),
       ]),
     ),
   ]);

@@ -5,6 +5,7 @@ import 'package:flutter/material.dart' hide Text;
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'i18n.dart';
+import 'healthsync.dart';
 import 'logic.dart';
 import 'main.dart' show app;
 import 'ui.dart';
@@ -109,6 +110,75 @@ class StepsCard extends StatefulWidget {
 
 class _StepsCardState extends State<StepsCard> {
   late final TextEditingController c = TextEditingController(text: widget.steps == 0 ? '' : '${widget.steps}');
+  bool _busy = false;
+  String? _msg;
+
+  @override
+  void initState() {
+    super.initState();
+    if (HealthSync.enabled) _sync(quiet: true);
+  }
+
+  Future<void> _sync({bool quiet = false, bool connect = false}) async {
+    if (_busy) return;
+    setState(() { _busy = true; if (!quiet) _msg = null; });
+    final err = connect ? await HealthSync.connect() : await HealthSync.sync();
+    if (!mounted) return;
+    setState(() {
+      _busy = false;
+      _msg = quiet ? null : err;
+      final today = app.logs[widget.date]?.steps ?? widget.steps;
+      if (widget.date == isoDate(DateTime.now()) && err == null) c.text = today == 0 ? '' : '$today';
+    });
+  }
+
+  String _ago() {
+    final l = HealthSync.last;
+    if (l == null) return 'Not synced yet';
+    final m = DateTime.now().difference(l).inMinutes;
+    if (m < 1) return 'Last synced just now';
+    if (m < 60) return 'Last synced $m min ago';
+    if (m < 1440) return 'Last synced ${m ~/ 60} h ago';
+    return 'Last synced ${m ~/ 1440} d ago';
+  }
+
+  Widget _syncRow(BuildContext context) {
+    final ac = accent(context);
+    if (!HealthSync.supported) {
+      return const Muted('Health app sync works in the Android app. On the web, type your steps.', size: 12);
+    }
+    if (!HealthSync.enabled) {
+      return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        OutlinedButton.icon(
+          onPressed: _busy ? null : () { buzz(); _sync(connect: true); },
+          icon: _busy ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.sync),
+          label: const Text('Connect Health Connect (Google Fit, watch)'),
+        ),
+        if (_msg != null) ...[const SizedBox(height: 6), Muted(_msg!, size: 12)],
+      ]);
+    }
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Row(children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+          decoration: BoxDecoration(color: const Color(0xFF2E9E6B).withOpacity(0.14), borderRadius: BorderRadius.circular(20), border: Border.all(color: const Color(0xFF2E9E6B).withOpacity(0.5))),
+          child: Row(mainAxisSize: MainAxisSize.min, children: [
+            const Icon(Icons.favorite, size: 14, color: Color(0xFF2E9E6B)),
+            const SizedBox(width: 6),
+            Text('Health Connect · ${_ago()}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF2E9E6B))),
+          ]),
+        ),
+        const SizedBox(width: 6),
+        IconButton(
+          tooltip: 'Sync now',
+          onPressed: _busy ? null : () { buzz(); _sync(); },
+          icon: _busy ? SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: ac)) : Icon(Icons.sync, color: ac),
+        ),
+        TextButton(onPressed: () { HealthSync.disconnect(); setState(() {}); }, child: const Text('Disconnect')),
+      ]),
+      if (_msg != null) ...[const SizedBox(height: 4), Muted(_msg!, size: 12)],
+    ]);
+  }
 
   @override
   void didUpdateWidget(StepsCard o) {
@@ -140,6 +210,8 @@ class _StepsCardState extends State<StepsCard> {
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         const H2('Steps'),
         const SizedBox(height: 8),
+        _syncRow(context),
+        const SizedBox(height: 12),
         Row(children: [
           RingGauge(fraction: frac, center: '${(frac * 100).clamp(0, 999).round()}%', size: 92),
           const SizedBox(width: 16),
@@ -169,7 +241,7 @@ class _StepsCardState extends State<StepsCard> {
             OutlinedButton(onPressed: () => _add(n), child: Text('+$n')),
         ]),
         const SizedBox(height: 8),
-        const Muted('Distance and calories are estimates from your height and weight. Copy your count from your phone or watch health app.', size: 12),
+        const Muted('Distance and calories are estimates from your height and weight.', size: 12),
       ]),
     );
   }

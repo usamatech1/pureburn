@@ -14,6 +14,7 @@ perms = [
     "android.permission.VIBRATE",
     "android.permission.ACTIVITY_RECOGNITION",
     "android.permission.USE_BIOMETRIC",
+    "android.permission.health.READ_STEPS",
 ]
 add = "".join(f'    <uses-permission android:name="{p}" />\n' for p in perms if p not in man)
 if add:
@@ -31,6 +32,28 @@ receivers = """        <receiver android:exported="false" android:name="com.dext
 """
 if "ScheduledNotificationReceiver" not in man:
     man = man.replace("</application>", receivers + "    </application>", 1)
+# Health Connect: the app must be visible to it and answer its permission rationale request.
+if "com.google.android.apps.healthdata" not in man:
+    q = '        <package android:name="com.google.android.apps.healthdata" />\n        <intent><action android:name="androidx.health.ACTION_SHOW_PERMISSIONS_RATIONALE" /></intent>\n'
+    if "<queries>" in man:
+        man = man.replace("<queries>", "<queries>\n" + q, 1)
+    else:
+        man = man.replace("<application", "<queries>\n" + q + "    </queries>\n    <application", 1)
+if "ACTION_SHOW_PERMISSIONS_RATIONALE\" />\n            </intent-filter>" not in man:
+    rationale = """            <intent-filter>
+                <action android:name="androidx.health.ACTION_SHOW_PERMISSIONS_RATIONALE" />
+            </intent-filter>
+"""
+    man = man.replace("</activity>", rationale + "        </activity>", 1)
+if "ViewPermissionUsageActivity" not in man:
+    alias = """        <activity-alias android:name="ViewPermissionUsageActivity" android:exported="true" android:targetActivity=".MainActivity" android:permission="android.permission.START_VIEW_PERMISSION_USAGE">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW_PERMISSION_USAGE" />
+                <category android:name="android.intent.category.HEALTH_PERMISSIONS" />
+            </intent-filter>
+        </activity-alias>
+"""
+    man = man.replace("</application>", alias + "    </application>", 1)
 open(man_path, "w", encoding="utf-8").write(man)
 
 # local_auth needs a FragmentActivity.
@@ -67,3 +90,13 @@ else:
         s += "\ndependencies {\n    coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.1.4'\n    implementation 'androidx.appcompat:appcompat:1.7.0'\n}\n"
     open(groovy, "w", encoding="utf-8").write(s)
     print("patched", groovy)
+
+# The health plugin needs Android 8 (API 26) or newer.
+for gf in (kts, groovy):
+    if os.path.exists(gf):
+        t = open(gf, encoding="utf-8").read()
+        t2 = re.sub(r"minSdk\s*=\s*flutter\.minSdkVersion", "minSdk = 26", t)
+        t2 = re.sub(r"minSdkVersion\s+flutter\.minSdkVersion", "minSdkVersion 26", t2)
+        if t2 != t:
+            open(gf, "w", encoding="utf-8").write(t2)
+            print("minSdk 26 in", gf)

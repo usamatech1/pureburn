@@ -52,12 +52,12 @@ class AppState extends ChangeNotifier {
     final backFromGoogle = cloud.justSignedIn || cloud.status.startsWith('Google sign-in');
     try {
       final raw = _sp!.getString('pureburn-state-v1');
-      if (raw != null) {
+      // A normal save file is a few KB. Anything huge is ignored so edited storage cannot freeze the app.
+      if (raw != null && raw.length <= 1000000) {
         final j = jsonDecode(raw) as Map<String, dynamic>;
         p.fromJson((j['p'] ?? {}) as Map<String, dynamic>);
-        logs = {};
-        ((j['logs'] ?? {}) as Map<String, dynamic>).forEach((k, v) => logs[k] = DayLog.fromJson(v as Map<String, dynamic>));
-        weights = ((j['weights'] ?? []) as List).map((e) => WeightEntry(e['d'] as String, (e['kg'] as num).toDouble())).toList();
+        logs = _safeLogs(j['logs']);
+        weights = _safeWeights(j['weights']);
         measures = ((j['meas'] ?? []) as List).map((e) => Measure.fromJson(e as Map<String, dynamic>)).toList();
         food = {};
         ((j['food'] ?? {}) as Map<String, dynamic>).forEach((k, v) => food[k] = [for (final e in v as List) FoodEntry.fromJson(e as Map<String, dynamic>)]);
@@ -94,6 +94,34 @@ class AppState extends ChangeNotifier {
     unlocked = !(set['lock'] == true && (set['pinHash'] as String).isNotEmpty) || Uri.base.queryParameters.containsKey('nolock');
     loaded = true;
     notifyListeners();
+  }
+
+  // Every value is checked while reading, so damaged or edited data can never crash the app.
+  Map<String, DayLog> _safeLogs(dynamic lj) {
+    final nl = <String, DayLog>{};
+    if (lj is Map) {
+      lj.forEach((k, v) {
+        if (nl.length >= 400) return; // a normal file holds about 120 days
+        if (k is String && isIsoDate(k) && v is Map<String, dynamic>) nl[k] = DayLog.fromJson(v);
+      });
+    }
+    return nl;
+  }
+
+  List<WeightEntry> _safeWeights(dynamic wj) {
+    final nw = <WeightEntry>[];
+    if (wj is List) {
+      for (final e in wj.take(3000)) {
+        if (e is! Map) continue;
+        final dd = e['d'];
+        final kg = e['kg'];
+        if (dd is String && isIsoDate(dd) && kg is num && kg.isFinite && kg >= 20 && kg <= 300) {
+          nw.add(WeightEntry(dd, kg.toDouble()));
+        }
+      }
+    }
+    nw.sort((a, b) => a.d.compareTo(b.d));
+    return nw;
   }
 
   bool loaded = false;
@@ -239,9 +267,8 @@ class AppState extends ChangeNotifier {
       if (j is! Map || j['app'] != 'pureburn') return 'This is not a PureBurn backup.';
       final np = Profile();
       np.fromJson((j['p'] ?? {}) as Map<String, dynamic>);
-      final nl = <String, DayLog>{};
-      ((j['logs'] ?? {}) as Map<String, dynamic>).forEach((k, v) => nl[k] = DayLog.fromJson(v as Map<String, dynamic>));
-      final nw = ((j['weights'] ?? []) as List).map((e) => WeightEntry(e['d'] as String, (e['kg'] as num).toDouble())).toList();
+      final nl = _safeLogs(j['logs']);
+      final nw = _safeWeights(j['weights']);
       final nm = ((j['meas'] ?? []) as List).map((e) => Measure.fromJson(e as Map<String, dynamic>)).toList();
       final nf = <String, List<FoodEntry>>{};
       ((j['food'] ?? {}) as Map<String, dynamic>).forEach((k, v) => nf[k] = [for (final e in v as List) FoodEntry.fromJson(e as Map<String, dynamic>)]);
@@ -489,12 +516,12 @@ class AppState extends ChangeNotifier {
   }
 
   void setSteps(int v) {
-    log(selDate).steps = v;
+    log(selDate).steps = v.clamp(0, 100000).toInt();
     save();
   }
 
   void addWeight(String date, double kg) {
-    if (kg < 20 || kg > 300) return;
+    if (!kg.isFinite || kg < 20 || kg > 300) return; // isFinite also rejects NaN, which passes the range test
     weights.removeWhere((w) => w.d == date);
     weights.add(WeightEntry(date, (kg * 10).round() / 10));
     weights.sort((a, b) => a.d.compareTo(b.d));

@@ -29,6 +29,39 @@ String fracTxt(double x) {
 
 String rotiTxt(int n) => '$n ${n == 1 ? 'roti' : 'rotis'} (atta, no ghee)';
 
+// ---- safe readers for saved data: anything unexpected falls back to the default ----
+String _pick(dynamic v, List<String> allowed, String cur) => v is String && allowed.contains(v) ? v : cur;
+
+double? _dblOrNull(dynamic v, double lo, double hi) {
+  if (v is num && v.isFinite) {
+    final x = v.toDouble();
+    if (x >= lo && x <= hi) return x;
+  }
+  return null;
+}
+
+double _dbl(dynamic v, double lo, double hi, double cur) => _dblOrNull(v, lo, hi) ?? cur;
+
+int _int(dynamic v, int lo, int hi, int cur) {
+  final x = _dblOrNull(v, lo.toDouble(), hi.toDouble());
+  return x == null ? cur : x.toInt();
+}
+
+Set<String> _strSet(dynamic v) => v is List ? v.whereType<String>().where((s) => s.length <= 40).toSet() : <String>{};
+
+final _isoRe = RegExp(r'^\d{4}-\d{2}-\d{2}$');
+final _hmRe = RegExp(r'^\d{2}:\d{2}$');
+// Checks the shape and also that the date really exists, so 2026-99-99 or 2026-02-31 are rejected.
+bool isIsoDate(String s) {
+  if (!_isoRe.hasMatch(s)) return false;
+  final y = int.parse(s.substring(0, 4));
+  final m = int.parse(s.substring(5, 7));
+  final d = int.parse(s.substring(8, 10));
+  if (y < 2000 || y > 2100) return false;
+  final dt = DateTime(y, m, d);
+  return dt.year == y && dt.month == m && dt.day == d;
+}
+
 class Profile {
   String unit = 'metric'; // metric | imperial
   String sex = 'm';
@@ -52,21 +85,22 @@ class Profile {
       };
 
   void fromJson(Map<String, dynamic> j) {
-    unit = j['unit'] ?? unit;
-    sex = j['sex'] ?? sex;
-    age = (j['age'] ?? age).toInt();
-    act = j['act'] ?? act;
-    heightCm = (j['heightCm'] ?? heightCm).toDouble();
-    weightKg = (j['weightKg'] ?? weightKg).toDouble();
-    std = j['std'] ?? std;
-    goal = j['goal'];
-    targetKg = j['targetKg'] == null ? null : (j['targetKg'] as num).toDouble();
-    pace = j['pace'] ?? pace;
-    days = (j['days'] ?? days).toInt();
-    place = j['place'] ?? place;
-    budget = j['budget'] ?? budget;
-    focus = j['focus'] ?? focus;
-    dietStyle = j['dietStyle'] ?? dietStyle;
+    unit = _pick(j['unit'], const ['metric', 'imperial'], unit);
+    sex = _pick(j['sex'], const ['m', 'f'], sex);
+    age = _int(j['age'], 0, 150, age);
+    act = _pick(j['act'], const ['sedentary', 'light', 'moderate', 'active'], act);
+    heightCm = _dbl(j['heightCm'], 0, 400, heightCm);
+    weightKg = _dbl(j['weightKg'], 0, 1000, weightKg);
+    std = _pick(j['std'], const ['asia', 'who'], std);
+    final g = j['goal'];
+    goal = (g is String && const ['lose', 'maintain', 'gain'].contains(g)) ? g : null;
+    targetKg = _dblOrNull(j['targetKg'], 0, 1000);
+    pace = _pick(j['pace'], const ['gentle', 'steady', 'fast'], pace);
+    days = _int(j['days'], 3, 5, days);
+    place = _pick(j['place'], const ['home', 'gym'], place);
+    budget = _pick(j['budget'], const ['low', 'std', 'high'], budget);
+    focus = _pick(j['focus'], const ['overall', 'belly', 'tone'], focus);
+    dietStyle = _pick(j['dietStyle'], const ['std', 'protein', 'lowcarb'], dietStyle);
   }
 }
 
@@ -83,17 +117,23 @@ class DayLog {
   Map<String, dynamic> toJson() => {'ex': ex.toList(), 'meal': meal.toList(), 'water': water, 'steps': steps, 'sleep': sleep, 'sleepQ': sleepQ, if (bed.isNotEmpty) 'bed': bed, if (wake.isNotEmpty) 'wake': wake, if (stags.isNotEmpty) 'st': stags.toList(), if (pm.isNotEmpty) 'pm': pm};
   static DayLog fromJson(Map<String, dynamic> j) {
     final d = DayLog();
-    d.ex = Set<String>.from((j['ex'] ?? []) as List);
-    d.meal = Set<String>.from((j['meal'] ?? []) as List);
-    d.water = (j['water'] ?? 0).toInt();
-    d.steps = (j['steps'] ?? 0).toInt();
-    d.sleep = ((j['sleep'] ?? 0) as num).toDouble();
-    d.sleepQ = ((j['sleepQ'] ?? 0) as num).toInt();
-    d.bed = (j['bed'] ?? '') as String;
-    d.wake = (j['wake'] ?? '') as String;
-    d.stags = Set<String>.from((j['st'] ?? []) as List);
+    d.ex = _strSet(j['ex']);
+    d.meal = _strSet(j['meal']);
+    d.water = _int(j['water'], 0, 100, 0);
+    d.steps = _int(j['steps'], 0, 100000, 0);
+    d.sleep = _dbl(j['sleep'], 0, 24, 0);
+    d.sleepQ = _int(j['sleepQ'], 0, 5, 0);
+    final bd = j['bed'], wk = j['wake'];
+    d.bed = bd is String && _hmRe.hasMatch(bd) ? bd : '';
+    d.wake = wk is String && _hmRe.hasMatch(wk) ? wk : '';
+    d.stags = _strSet(j['st']);
     final pmj = j['pm'];
-    if (pmj is Map) d.pm = {for (final e in pmj.entries) '${e.key}': (e.value as num).toDouble()};
+    if (pmj is Map) {
+      for (final e in pmj.entries) {
+        final f = _dblOrNull(e.value, 0, 10);
+        if (e.key is String && (e.key as String).length <= 40 && f != null && d.pm.length < 20) d.pm[e.key as String] = f;
+      }
+    }
     return d;
   }
 }

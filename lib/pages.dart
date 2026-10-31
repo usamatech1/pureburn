@@ -339,7 +339,7 @@ Future<void> logWeightDialog(BuildContext context) async {
         FilledButton(
           onPressed: () {
             final n = double.tryParse(c.text.replaceAll(',', '.'));
-            if (n == null || app.fromDisp(n) < 20 || app.fromDisp(n) > 300) {
+            if (n == null || !n.isFinite || app.fromDisp(n) < 20 || app.fromDisp(n) > 300) {
               ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Enter a weight between 20 and 300 kg.')));
               return;
             }
@@ -491,7 +491,10 @@ class _ProfilePageState extends State<ProfilePage> {
     super.dispose();
   }
 
-  double? _n(TextEditingController c) => double.tryParse(c.text.replaceAll(',', '.'));
+  double? _n(TextEditingController c) {
+    final v = double.tryParse(c.text.replaceAll(',', '.'));
+    return v != null && v.isFinite ? v : null;
+  }
 
   Widget _num(TextEditingController c, String unit, ValueChanged<String> onCh, {bool dec = true}) => TextField(
         controller: c,
@@ -540,14 +543,14 @@ class _ProfilePageState extends State<ProfilePage> {
           app.save();
         })),
         Field('Sex', Seg<String>(opts: const [('m', 'Male'), ('f', 'Female')], value: p.sex, onChanged: (v) { p.sex = v; app.save(); })),
-        Field('Age', _num(age, 'yrs', (v) { final n = int.tryParse(v); if (n != null) { p.age = n; app.save(); } }, dec: false)),
+        Field('Age', _num(age, 'yrs', (v) { final n = int.tryParse(v); if (n != null) { p.age = n.clamp(0, 150).toInt(); app.save(); } }, dec: false)),
         Field(
           'Height',
           Row(children: [
             Expanded(flex: 3, child: _num(cm, 'cm', (v) {
               final n = _n(cm);
               if (n == null) return;
-              p.heightCm = n;
+              p.heightCm = n.clamp(0.0, 400.0).toDouble();
               final tin = n / 2.54;
               final f = (tin / 12).floor();
               ft.text = '$f';
@@ -561,7 +564,7 @@ class _ProfilePageState extends State<ProfilePage> {
           ]),
           hint: 'Type in centimetres or in feet and inches. The other updates by itself.',
         ),
-        Field('Current weight', _num(w, app.unitLbl(), (v) { final n = _n(w); if (n != null) { p.weightKg = (app.fromDisp(n) * 100).round() / 100; app.save(); } })),
+        Field('Current weight', _num(w, app.unitLbl(), (v) { final n = _n(w); if (n != null) { p.weightKg = (app.fromDisp(n).clamp(0.0, 1000.0) * 100).round() / 100; app.save(); } })),
         Field(
           'Daily activity, outside workouts',
           DropdownButtonFormField<String>(
@@ -591,7 +594,7 @@ class _ProfilePageState extends State<ProfilePage> {
           tw.text = tidy(app.toDisp(app.d.ok ? app.d.tKg : p.weightKg));
         }), hint: 'Chosen for you from your BMI. Change it any time.'),
         if (goalNow != 'maintain') ...[
-          Field('Target weight', _num(tw, app.unitLbl(), (v) { final n = _n(tw); if (n != null) { p.targetKg = (app.fromDisp(n) * 100).round() / 100; app.save(); } })),
+          Field('Target weight', _num(tw, app.unitLbl(), (v) { final n = _n(tw); if (n != null) { p.targetKg = (app.fromDisp(n).clamp(0.0, 1000.0) * 100).round() / 100; app.save(); } })),
           Align(alignment: Alignment.centerLeft, child: TextButton(onPressed: () { p.targetKg = null; app.save(); tw.text = tidy(app.toDisp(app.d.tKg)); }, child: const Text('Use my best weight'))),
           Field('Pace', _paceCards(goalNow, p), hint: d.g == null ? null : 'Your plan is set for about ${app.fmtD(d.g!.pace)} per week.'),
         ],
@@ -693,7 +696,7 @@ class _ProfilePageState extends State<ProfilePage> {
   void _fromFt() {
     final f = _n(ft) ?? 0;
     final i = _n(inch) ?? 0;
-    final c = ((f * 12 + i) * 2.54 * 10).round() / 10;
+    final c = (((f * 12 + i) * 2.54).clamp(0.0, 400.0) * 10).round() / 10;
     app.p.heightCm = c;
     cm.text = tidy(c);
     app.save();
@@ -1119,7 +1122,7 @@ class _StepsField extends StatelessWidget {
   Widget build(BuildContext context) => TextFormField(
         initialValue: initial == 0 ? '' : '$initial',
         keyboardType: TextInputType.number,
-        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+        inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(6)],
         decoration: const InputDecoration(suffixText: 'steps', hintText: '0'),
         onChanged: (v) => app.setSteps(int.tryParse(v) ?? 0),
       );
@@ -1418,7 +1421,7 @@ class _ProgressPageState extends State<ProgressPage> {
             FilledButton(
               onPressed: () {
                 final n = double.tryParse(wc.text.replaceAll(',', '.'));
-                if (n != null) {
+                if (n != null && n.isFinite) {
                   app.addWeight(isoDate(date), app.fromDisp(n));
                 }
               },

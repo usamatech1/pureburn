@@ -8,7 +8,7 @@ These match how the app works today (accounts, cloud sync, challenges and the AI
 |---|---|
 | Does your app collect or share any of the required user data types? | Yes |
 | Is all of the user data collected by your app encrypted in transit? | Yes (HTTPS to Firebase, Cloudflare and Google) |
-| Do you provide a way for users to request that their data is deleted? | Yes. Add a web link or the contact route from the privacy policy ("Keeping and deleting your data"). Play requires a deletion route outside the app for apps that let people create accounts. |
+| Do you provide a way for users to request that their data is deleted? | Yes. In the app: Account, then "Delete my account". On the web: https://usamatech1.github.io/pureburn/delete-account.html (enter this as the account deletion URL in Play Console). |
 | Can users create an account in the app? | Yes (email and password, or Google). Accounts are optional. |
 
 ## Data types to declare
@@ -38,7 +38,7 @@ Not collected: location, contacts, photos or files, financial info, device ident
 
 ## Still to do before you submit
 
-- The app has no "Delete my account" button. Play requires apps with accounts to offer in-app account deletion and a web link for it. Until a button is added, give Play a deletion-request link or email (the privacy policy currently points to GitHub issues, which are public, so a contact email is better) and plan to add in-app deletion.
+- Test the "Delete my account" button on a real test account before you submit: sign up, sync, join a challenge, then delete, and check in the Firebase console that the user and the `users/{uid}/sync/state` document are gone.
 - The "Health apps" declaration in Play Console may also apply, because the app reads Health Connect data. Answer it honestly.
 
 ## What stays on the device only

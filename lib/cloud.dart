@@ -353,6 +353,51 @@ class CloudService extends ChangeNotifier {
     await http.delete(Uri.parse('$_docs/challenges/$challengeId/entries/$uid'), headers: {'Authorization': 'Bearer $t'});
   }
 
+  // ---- delete account ----
+  /// Permanently deletes the account: the challenge scores, the synced backup and then the sign-in itself.
+  /// Data stored on this phone is not touched. Returns normally only when everything is gone.
+  Future<void> deleteAccount(Iterable<String> challengeIds) async {
+    if (!cloudConfigured) throw CloudError('The cloud is not set up in this build yet.');
+    final t = await token();
+    final h = {'Authorization': 'Bearer $t'};
+    final me = uid;
+    _debounce?.cancel();
+    busy = true;
+    notifyListeners();
+    try {
+      for (final id in challengeIds.toSet()) {
+        final r = await http.delete(Uri.parse('$_docs/challenges/$id/entries/$me'), headers: h);
+        if (r.statusCode != 200 && r.statusCode != 404) {
+          throw CloudError('Could not remove your challenge scores, so nothing was deleted. Please try again.');
+        }
+      }
+      final s = await http.delete(Uri.parse('$_docs/users/$me/sync/state'), headers: h);
+      if (s.statusCode != 200 && s.statusCode != 404) {
+        throw CloudError('Could not delete your cloud backup. Please try again.');
+      }
+      final a = await http.post(Uri.parse('https://identitytoolkit.googleapis.com/v1/accounts:delete?key=$fbApiKey'),
+          headers: {'Content-Type': 'application/json'}, body: jsonEncode({'idToken': t}));
+      if (a.statusCode != 200) {
+        // The backup is already gone, so stop automatic sync from writing a new one.
+        autoSync = false;
+        _save();
+        var m = '';
+        try {
+          final j = jsonDecode(a.body) as Map<String, dynamic>;
+          m = '${(j['error'] ?? {})['message'] ?? ''}'.toUpperCase();
+        } catch (_) {}
+        if (m.contains('CREDENTIAL_TOO_OLD') || m.contains('TOKEN_EXPIRED') || m.contains('INVALID_ID_TOKEN')) {
+          throw CloudError('Your cloud data is deleted. For safety, Google needs a fresh sign-in to remove the account itself. Sign out, sign in again, then press Delete my account again.');
+        }
+        throw CloudError('Your cloud data is deleted, but the account could not be removed. Please try again.');
+      }
+    } finally {
+      busy = false;
+      notifyListeners();
+    }
+    signOut();
+  }
+
   // ---- AI coach ----
   Future<String> coach(String message, Map<String, dynamic> context) async {
     final t = await token();

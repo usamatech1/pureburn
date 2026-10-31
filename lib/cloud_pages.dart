@@ -113,6 +113,38 @@ class _AccountPageState extends State<AccountPage> {
     _msg(context, r);
   }
 
+  Future<void> _delete() async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (c) => AlertDialog(
+        title: const Text('Delete your account?'),
+        content: const Text('This permanently deletes your account, your cloud backup and your challenge scores. It cannot be undone. The data saved on this phone is not deleted.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Cancel')),
+          FilledButton(onPressed: () => Navigator.pop(c, true), child: const Text('Delete my account')),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    setState(() => busy = true);
+    try {
+      final ids = <String>{for (final e in (app.set['joined'] ?? const []) as List) '$e'};
+      final wk = app.weekDates().first;
+      for (final c in _chs) {
+        ids.add('${wk}_${c.key}');
+      }
+      await cloud.deleteAccount(ids);
+      app.set['joined'] = <String>[];
+      app.saveSettings();
+      if (mounted) _msg(context, 'Your account and cloud data were deleted. The data on this phone is still here.');
+    } on CloudError catch (e) {
+      if (mounted) _msg(context, e.message);
+    } catch (_) {
+      if (mounted) _msg(context, 'Could not reach the server. Check your internet.');
+    }
+    if (mounted) setState(() => busy = false);
+  }
+
   String _ago(int ms) {
     if (ms == 0) return 'never';
     final s = (DateTime.now().millisecondsSinceEpoch - ms) ~/ 1000;
@@ -214,6 +246,19 @@ class _AccountPageState extends State<AccountPage> {
       ),
       _gap(12),
       const Muted('Your plan, logs, food diary, weights and settings are stored in your private account space. Only you can read them.', size: 12),
+      _gap(12),
+      Box(
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          const Text('Delete account', style: TextStyle(fontWeight: FontWeight.w600)),
+          const Muted('Permanently deletes your account, your cloud backup and your challenge scores. The data on this phone stays.', size: 12),
+          _gap(10),
+          OutlinedButton.icon(
+            onPressed: (busy || cloud.busy) ? null : _delete,
+            icon: const Icon(Icons.delete_outline),
+            label: const Text('Delete my account'),
+          ),
+        ]),
+      ),
     ]);
   }
 }

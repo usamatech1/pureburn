@@ -34,9 +34,10 @@ Health & Fitness
 Fitness, Health, Weight loss and diet (choose what Play offers)
 
 ## Contact details (required by Play)
-- Email: (use an email you are happy to show publicly on the store page)
+- Email: thesyedu@gmail.com
 - Website: https://usamatech1.github.io/pureburn/
 - Privacy policy URL: https://usamatech1.github.io/pureburn/privacy.html
+- Account deletion URL (Data safety form, "delete account URL"): https://usamatech1.github.io/pureburn/delete-account.html
 
 ## Graphics (already made, in play-store/assets)
 - App icon 512x512: play-store/assets/app-icon-512.png

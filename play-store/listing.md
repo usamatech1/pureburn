@@ -22,7 +22,7 @@ WHAT YOU GET
 - Light and dark mode
 
 PRIVATE BY DESIGN
-No account. No ads. No tracking. Everything you enter stays on your phone.
+No ads. No tracking. No account needed: skip sign-in and everything you enter stays on your phone. Sign in only if you want backup and sync, challenges or the AI coach.
 
 IMPORTANT
 PureBurn gives general guidance only and is not a medical device. BMI is not accurate for athletes or pregnant women. Please talk to a doctor before starting a new exercise or diet plan.
@@ -44,11 +44,11 @@ Fitness, Health, Weight loss and diet (choose what Play offers)
 - Phone screenshots: you still need at least 2 real screenshots of the app (portrait, JPEG or PNG). Take them on your phone from the dashboard, the Profile and goal screen and the Your plan screen.
 
 ## App content answers (Policy, App content)
-- App access: all features available without login, no special access needed
+- App access: the main features work without login. Cloud backup and sync, challenges and the AI coach need a free account (email or Google), which anyone can create. No special access or test account is needed.
 - Ads: No
 - Target audience: 18 and over (safest choice for a health and diet app)
 - Content rating questionnaire: answer No to violence, sexual content, language, gambling, drugs. Expected rating: Everyone
-- Data safety: No data collected, no data shared. Details in DATA-SAFETY.md
+- Data safety: data IS collected when the user signs in (email, health and fitness data, display name, coach questions). Follow DATA-SAFETY.md exactly. Do not answer "No data collected".
 - Health apps declaration: Play may ask you to complete it for Health & Fitness apps. Answer that the app gives general fitness and nutrition information only, has no medical device features, and does not claim to diagnose or treat any condition. Read the form carefully and answer honestly.
 - Government app: No
 - Financial features: None

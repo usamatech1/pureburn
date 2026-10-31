@@ -1,6 +1,6 @@
 # PureBurn (Flutter)
 
-Black and white BMI, goal, daily exercise and Pakistani diet tracker. Data is stored on the device with shared_preferences.
+Black and white BMI, goal, daily exercise and Pakistani diet tracker. Data is stored on the device with shared_preferences. An account is optional: signing in adds cloud backup and sync, challenges and the AI coach (see the privacy policy for what is sent).
 
 ## Download and use
 
